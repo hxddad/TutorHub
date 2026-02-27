@@ -1,0 +1,11 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --brand-navy: 15 23 42;      /* slate-900 */
+    --brand-emerald: 5 150 105;   /* emerald-600 */
+    --brand-emerald-light: 209 250 229; /* emerald-100 */
+  }
+}
