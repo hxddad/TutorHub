@@ -27,3 +27,39 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Failed to fetch courses" }, { status: 500 });
   }
 }
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json().catch(() => ({}));
+    // Prefer header (set by dashboard middleware) fallback to body.tutorId
+    const hdrs = (request as any).headers || new Headers();
+    const tutorIdHeader = hdrs.get ? hdrs.get("x-user-id") : null;
+    const tutorId = tutorIdHeader || body.tutorId;
+
+    if (!tutorId) {
+      return NextResponse.json({ error: "tutorId is required" }, { status: 400 });
+    }
+    const title = (body.title || "").toString().trim();
+    const subject = (body.subject || "").toString().trim();
+    if (!title || !subject) {
+      return NextResponse.json({ error: "title and subject are required" }, { status: 400 });
+    }
+
+    const course = await prisma.course.create({
+      data: {
+        title,
+        subject,
+        description: body.description || null,
+        tutorId,
+        price: typeof body.price === "number" ? body.price : body.price ? parseFloat(body.price) : null,
+        level: body.level || null,
+        isPublished: !!body.isPublished,
+      },
+    });
+
+    return NextResponse.json(course, { status: 201 });
+  } catch (err) {
+    console.error("POST /api/courses error", err);
+    return NextResponse.json({ error: "Failed to create course" }, { status: 500 });
+  }
+}

@@ -1,20 +1,17 @@
 import Link from "next/link";
+import { headers } from "next/headers";
+import CreateCourseForm from "@/components/CreateCourseForm";
 
 export default function TutorDashboardPage() {
+  const hdrs = headers();
+  const userId = hdrs.get("x-user-id") || "";
+
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-      <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-        Tutor Dashboard
-      </h1>
-      <p className="mt-2 text-slate-600">
-        Welcome to your dashboard. Students and assignments will appear here.
-      </p>
-      <Link
-        href="/login"
-        className="mt-6 inline-block text-sm font-semibold text-emerald-600 hover:text-emerald-700 hover:underline"
-      >
-        Back to Log in
-      </Link>
-    </div>
+    <main className="py-8">
+      <div className="container mx-auto px-4">
+        <h1 className="text-2xl font-semibold mb-4">Tutor Dashboard — Create a course</h1>
+        <CreateCourseForm tutorId={userId} />
+      </div>
+    </main>
   );
 }
