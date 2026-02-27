@@ -144,6 +144,7 @@ Create a `.env` file in the project root with:
 |------------------|-------------|
 | `DATABASE_URL`  | PostgreSQL connection string, e.g. `postgresql://USER:PASSWORD@localhost:5432/tutorhub` |
 | `JWT_SECRET`    | Secret used to sign JWT tokens (use a long random string in production; do not commit this value) |
+Replace the USER and PASSWORD with your OS credentials in your personal env!
 
 ### Install and run
 
@@ -170,3 +171,15 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 | `npx prisma migrate dev` | Apply migrations in development |
 | `npx prisma studio` | Open Prisma Studio to view and edit data |
 | `npx prisma generate` | Regenerate the Prisma client after schema changes |
+
+
+### Creating an Admin user
+
+In order to create an admin user, set up the following parameters in your local env to be used for the account:
+| Variable         | Description |
+|------------------|-------------|
+| `ADMIN_EMAIL`  | Email to be used for the account |
+| `ADMIN_PASSWORD`    | Password to be used for the newly created account |
+| `ADMIN_NAME`    | Name to be set for the newly created account |
+
+If no credentials are specified, the defeault ones will be used. For more, see /scripts/seed-admin.mjs
