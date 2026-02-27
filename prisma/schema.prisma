@@ -14,6 +14,13 @@ enum Role {
   ADMIN
 }
 
+enum EnrollmentStatus {
+  PENDING
+  ACTIVE
+  CANCELLED
+  COMPLETED
+}
+
 model User {
   id        String   @id @default(uuid())
   fullName  String
@@ -22,7 +29,16 @@ model User {
   role      Role
   createdAt DateTime @default(now())
 
-  courses   Course[]
+  // optional profile fields
+  bio       String?
+  avatar    String?
+  subjects  String?  // comma-separated list or JSON if needed
+
+  // relations
+  courses   Course[]       // courses taught (tutor)
+  enrollments Enrollment[] // courses enrolled (student)
+  submissions     Submission[]
+  progresses      Progress[]
 }
 
 model Course {
@@ -34,4 +50,64 @@ model Course {
   tutorId     String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  // new fields for browsing/enrollment
+  isPublished Boolean  @default(false)
+  capacity    Int?
+  price       Float?
+  level       String?   // e.g. "Beginner", "Intermediate", "Advanced"
+  tags        String?   // comma-separated; or use Json if preferred
+  schedule    Json?     // structured schedule (timeslots) stored as JSON
+  averageRating Float?  @default(0)
+
+  // relations
+  enrollments Enrollment[]
+  assignments Assignment[]
+  progresses   Progress[]
+}
+
+model Enrollment {
+  id         Int      @id @default(autoincrement())
+  student    User     @relation(fields: [studentId], references: [id])
+  studentId  String
+  course     Course   @relation(fields: [courseId], references: [id])
+  courseId   Int
+  status     EnrollmentStatus @default(PENDING)
+  enrolledAt DateTime @default(now())
+
+  @@unique([studentId, courseId])
+}
+
+model Assignment {
+  id          Int      @id @default(autoincrement())
+  course      Course   @relation(fields: [courseId], references: [id])
+  courseId    Int
+  title       String
+  description String?
+  dueDate     DateTime?
+  createdAt   DateTime @default(now())
+
+  submissions Submission[]
+}
+
+model Submission {
+  id           Int      @id @default(autoincrement())
+  assignment   Assignment @relation(fields: [assignmentId], references: [id])
+  assignmentId Int
+  student      User     @relation(fields: [studentId], references: [id])
+  studentId    String
+  content      String?
+  grade        Float?
+  submittedAt  DateTime @default(now())
+}
+
+model Progress {
+  id            Int      @id @default(autoincrement())
+  student       User     @relation(fields: [studentId], references: [id])
+  studentId     String
+  course        Course   @relation(fields: [courseId], references: [id])
+  courseId      Int
+  progressPercent Int    @default(0)
+  lastUpdated   DateTime @updatedAt
+  notes         String?
 }
