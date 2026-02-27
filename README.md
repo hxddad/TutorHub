@@ -116,3 +116,57 @@ Although TutorHub uses a layered architecture, it internally follows the MVC des
 - **Database:** PostgreSQL
 - **Architecture:** Modular Monolith + Layered Architecture
 - **Design Pattern:** MVC
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+- **Node.js** (v18 or later)
+- **PostgreSQL** installed and running
+
+### PostgreSQL setup
+
+1. Create a database for the project (e.g. `tutorhub`):
+
+   ```sql
+   CREATE DATABASE tutorhub;
+   ```
+
+2. Note your connection details: host (usually `localhost`), port (default `5432`), database name, user, and password. The app connects via the `DATABASE_URL` environment variable.
+
+### Environment variables
+
+Create a `.env` file in the project root with:
+
+| Variable         | Description |
+|------------------|-------------|
+| `DATABASE_URL`  | PostgreSQL connection string, e.g. `postgresql://USER:PASSWORD@localhost:5432/tutorhub` |
+| `JWT_SECRET`    | Secret used to sign JWT tokens (use a long random string in production; do not commit this value) |
+
+### Install and run
+
+```bash
+# Install dependencies
+npm install
+
+# Generate Prisma client
+npx prisma generate
+
+# Run database migrations
+npx prisma migrate dev
+
+# Start the development server
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+### Useful Prisma commands
+
+| Command | Description |
+|---------|-------------|
+| `npx prisma migrate dev` | Apply migrations in development |
+| `npx prisma studio` | Open Prisma Studio to view and edit data |
+| `npx prisma generate` | Regenerate the Prisma client after schema changes |
