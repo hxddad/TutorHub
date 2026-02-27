@@ -64,6 +64,8 @@ export default function LoginForm() {
           if (typeof window !== "undefined") {
             window.localStorage.setItem("token", token);
             setAuthCookie(token);
+            // notify other parts of the app in the same tab
+            window.dispatchEvent(new Event("auth-change"));
           }
         }
         setSuccessMessage("Welcome back!");
