@@ -17,7 +17,7 @@ export default function StudentDashboardPage() {
         >
           Browse available courses
         </Link>
-        </div>
+      </div>
         
       <Link
         href="/login"

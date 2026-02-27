@@ -73,7 +73,17 @@ export default function CreateCourseForm({ tutorId }: { tutorId?: string }) {
       <div className="flex gap-2">
         <div className="flex-1">
           <label className="block text-sm font-medium mb-1">Level</label>
-          <input value={level} onChange={(e) => setLevel(e.target.value)} className="w-full border rounded px-3 py-2" placeholder="e.g. Beginner" />
+          <select
+            value={level}
+            onChange={(e) => setLevel(e.target.value)}
+            className="w-full border rounded px-3 py-2 bg-white"
+          >
+            <option value="">Select level</option>
+            <option value="Beginner">Beginner</option>
+            <option value="Intermediate">Intermediate</option>
+            <option value="Advanced">Advanced</option>
+            <option value="Expert">Expert</option>
+          </select>
         </div>
         <div style={{ width: 140 }}>
           <label className="block text-sm font-medium mb-1">Price (USD)</label>
