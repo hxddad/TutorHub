@@ -144,6 +144,7 @@ Create a `.env` file in the project root with:
 |------------------|-------------|
 | `DATABASE_URL`  | PostgreSQL connection string, e.g. `postgresql://USER:PASSWORD@localhost:5432/tutorhub` |
 | `JWT_SECRET`    | Secret used to sign JWT tokens (use a long random string in production; do not commit this value) |
+
 Replace the USER and PASSWORD with your OS credentials in your personal env!
 
 ### Install and run
