@@ -98,7 +98,11 @@ model Submission {
   studentId    String
   content      String?
   grade        Float?
+  feedback     String?
+  reviewedAt   DateTime?
   submittedAt  DateTime @default(now())
+
+  @@unique([assignmentId, studentId])
 }
 
 model Progress {
