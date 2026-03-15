@@ -10,22 +10,20 @@ export default function StudentDashboardPage() {
         Welcome to your dashboard. Course enrollment and assignments will appear here.
       </p>
 
-      <div className="mt-6 flex gap-3">
+      <div className="mt-6 flex flex-wrap gap-3">
         <Link
           href="/courses"
           className="rounded bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 transition"
         >
           Browse available courses
         </Link>
+        <Link
+          href="/dashboard/student/assignments"
+          className="rounded bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 transition"
+        >
+          My assignments
+        </Link>
       </div>
-        
-      <Link
-        href="/login"
-        className="mt-6 inline-block text-sm font-semibold text-emerald-600 hover:text-emerald-700 hover:underline"
-      >
-        Back to Log in
-      </Link>
-      
     </div>
   );
 }
