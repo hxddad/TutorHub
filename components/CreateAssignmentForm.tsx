@@ -39,6 +39,13 @@ export default function CreateAssignmentForm({ onCreated }: { onCreated?: () => 
       return;
     }
 
+    // check due date is in the future
+    if (dueDate && new Date(dueDate) < new Date()) {
+      setError("Due date cannot be in the past.");
+      setSaving(false);
+      return;
+    }
+
     setSaving(true);
     try {
       const res = await fetch("/api/assignments", {
@@ -112,7 +119,7 @@ export default function CreateAssignmentForm({ onCreated }: { onCreated?: () => 
 
       <div>
         <label className="block text-sm font-medium mb-1">Due Date</label>
-        <input type="datetime-local" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="w-full border rounded px-3 py-2" />
+        <input type="datetime-local" value={dueDate} onChange={(e) => setDueDate(e.target.value)} min={new Date().toISOString().slice(0, 16)} className="w-full border rounded px-3 py-2" />
       </div>
 
       <div className="flex justify-end">

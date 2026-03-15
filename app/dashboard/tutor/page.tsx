@@ -13,8 +13,15 @@ export default function TutorDashboardPage() {
         <p className="text-slate-600 mb-6">
           Manage your courses, create assignments and review student submissions.
         </p>
-
+        
         <div className="flex flex-wrap gap-3 mb-8">
+          <Link
+            href="/dashboard/tutor/courses"
+            className="rounded bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 transition"
+          >
+            Create courses
+          </Link>
+
           <Link
             href="/dashboard/tutor/assignments"
             className="rounded bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 transition"
@@ -29,8 +36,8 @@ export default function TutorDashboardPage() {
           </Link>
         </div>
 
-        <h2 className="text-lg font-semibold mb-4">Create a new course</h2>
-        <CreateCourseForm tutorId={userId} />
+        {/* <h2 className="text-lg font-semibold mb-4">Create a new course</h2>
+        <CreateCourseForm tutorId={userId} /> */}
       </div>
     </main>
   );
