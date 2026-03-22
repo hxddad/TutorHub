@@ -39,6 +39,26 @@ model User {
   enrollments Enrollment[] // courses enrolled (student)
   submissions     Submission[]
   progresses      Progress[]
+
+  messagesSent     Message[] @relation("MessagesSent")
+  messagesReceived Message[] @relation("MessagesReceived")
+}
+
+// Direct user-to-user messaging (stored in PostgreSQL, retrieved via Prisma).
+model Message {
+  id         String   @id @default(uuid())
+  senderId   String // who sent (maps to your "SendId" concept)
+  receiverId String
+  content    String   @db.Text
+  createdAt  DateTime @default(now()) // message timestamp
+  isRead     Boolean  @default(false)
+
+  sender   User @relation("MessagesSent", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User @relation("MessagesReceived", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@index([senderId, createdAt])
+  @@index([receiverId, createdAt])
+  @@index([receiverId, isRead])
 }
 
 model Course {
