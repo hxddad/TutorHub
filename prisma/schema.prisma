@@ -42,6 +42,9 @@ model User {
 
   messagesSent     Message[] @relation("MessagesSent")
   messagesReceived Message[] @relation("MessagesReceived")
+
+  // study plans
+  studyPlans StudyPlan[]
 }
 
 // Direct user-to-user messaging (stored in PostgreSQL, retrieved via Prisma).
@@ -84,6 +87,7 @@ model Course {
   enrollments Enrollment[]
   assignments Assignment[]
   progresses   Progress[]
+  tasks Task[] 
 }
 
 model Enrollment {
@@ -134,4 +138,25 @@ model Progress {
   progressPercent Int    @default(0)
   lastUpdated   DateTime @updatedAt
   notes         String?
+}
+
+model StudyPlan {
+  id         Int      @id @default(autoincrement())
+  studentId  String
+  student    User     @relation(fields: [studentId], references: [id])
+  tasks      Task[]
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Task {
+  id          Int       @id @default(autoincrement())
+  studyPlanId Int
+  studyPlan   StudyPlan @relation(fields: [studyPlanId], references: [id])
+  courseId    Int       // add this
+  course      Course    @relation(fields: [courseId], references: [id])
+  title       String
+  dueDate     DateTime
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }

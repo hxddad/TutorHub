@@ -64,6 +64,39 @@ export default function StudentDashboardPage() {
             )}
           </div>
         ))}
+
+        {/* Add study plan cards to match the style */}
+        <div className="group flex flex-col rounded-2xl border border-slate-200/90 bg-white p-6 shadow-md shadow-slate-200/30 transition hover:border-emerald-200/80 hover:shadow-lg hover:shadow-emerald-100/40">
+          <h2 className="text-lg font-semibold text-slate-900">Create Study Plan</h2>
+          <p className="mt-2 flex-1 text-sm leading-relaxed text-slate-600">
+            Add a new study plan with tasks for your enrolled courses.
+          </p>
+          <Link
+            href="/dashboard/student/study-plan/create-plan"
+            className="mt-6 inline-flex w-fit items-center rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-emerald-600/20 transition hover:bg-emerald-500"
+          >
+            Create a study plan
+            <span className="ml-1 transition group-hover:translate-x-0.5" aria-hidden>
+              →
+            </span>
+          </Link>
+        </div>
+
+        <div className="group flex flex-col rounded-2xl border border-slate-200/90 bg-white p-6 shadow-md shadow-slate-200/30 transition hover:border-emerald-200/80 hover:shadow-lg hover:shadow-emerald-100/40">
+          <h2 className="text-lg font-semibold text-slate-900">View Study Plans</h2>
+          <p className="mt-2 flex-1 text-sm leading-relaxed text-slate-600">
+            See all your saved study plans and tasks.
+          </p>
+          <Link
+            href="/dashboard/student/study-plan/view-plans"
+            className="mt-6 inline-flex w-fit items-center rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-emerald-600/20 transition hover:bg-emerald-500"
+          >
+            View Study Plans
+            <span className="ml-1 transition group-hover:translate-x-0.5" aria-hidden>
+              →
+            </span>
+          </Link>
+        </div>
       </div>
     </div>
   );
