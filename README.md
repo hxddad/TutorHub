@@ -183,7 +183,7 @@ In order to create an admin user, set up the following parameters in your local 
 | `ADMIN_PASSWORD`    | Password to be used for the newly created account |
 | `ADMIN_NAME`    | Name to be set for the newly created account |
 
-If no credentials are specified, the defeault ones will be used. For more, see /scripts/seed-admin.mjs
+If no credentials are specified, the defeault ones will be used. For more, see [/scripts/seed-admin.mjs](https://github.com/kamilsft/TutorHub/blob/main/scripts/seed-admin.mjs)
 
 After this, run 
 ```bash
