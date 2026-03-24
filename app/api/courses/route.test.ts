@@ -1,0 +1,79 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const prismaMock = vi.hoisted(() => ({
+  course: {
+    findMany: vi.fn(),
+    create: vi.fn(),
+  },
+}));
+
+vi.mock("@/lib/prisma", () => ({ prisma: prismaMock }));
+
+import { GET, POST } from "./route";
+
+describe("/api/courses", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  describe("GET", () => {
+    it("returns published courses", async () => {
+      prismaMock.course.findMany.mockResolvedValue([{ id: 1, title: "Math" }] as never);
+      const req = new Request("http://localhost/api/courses");
+      const res = await GET(req);
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data).toHaveLength(1);
+      expect(prismaMock.course.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ isPublished: true }),
+        })
+      );
+    });
+
+    it("filters by subject when query param set", async () => {
+      prismaMock.course.findMany.mockResolvedValue([]);
+      const req = new Request("http://localhost/api/courses?subject=Physics");
+      await GET(req);
+      expect(prismaMock.course.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ subject: "Physics", isPublished: true }),
+        })
+      );
+    });
+  });
+
+  describe("POST", () => {
+    it("returns 400 without tutorId", async () => {
+      const req = new Request("http://localhost/api/courses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: "T", subject: "S" }),
+      });
+      const res = await POST(req);
+      expect(res.status).toBe(400);
+    });
+
+    it("creates course when tutorId in body", async () => {
+      prismaMock.course.create.mockResolvedValue({
+        id: 5,
+        title: "Calc",
+        subject: "Math",
+        tutorId: "t1",
+      } as never);
+
+      const req = new Request("http://localhost/api/courses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tutorId: "t1",
+          title: "Calc",
+          subject: "Math",
+          isPublished: true,
+        }),
+      });
+      const res = await POST(req);
+      expect(res.status).toBe(201);
+    });
+  });
+});

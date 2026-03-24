@@ -1,0 +1,119 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const prismaMock = vi.hoisted(() => ({
+  submission: { findMany: vi.fn(), findFirst: vi.fn(), create: vi.fn(), update: vi.fn() },
+  assignment: { findUnique: vi.fn() },
+  course: { findUnique: vi.fn() },
+  enrollment: { findUnique: vi.fn() },
+}));
+
+vi.mock("@/lib/prisma", () => ({ prisma: prismaMock }));
+
+import { signToken } from "@/lib/jwt";
+import { GET, POST } from "./route";
+
+const STUDENT = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
+const TUTOR = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
+
+describe("/api/submissions", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  describe("GET", () => {
+    it("returns 400 without assignmentId or courseId", async () => {
+      const req = new Request("http://localhost/api/submissions", {
+        headers: { authorization: `Bearer ${signToken(STUDENT, "STUDENT")}` },
+      });
+      const res = await GET(req);
+      expect(res.status).toBe(400);
+    });
+
+    it("student GET filters to own submissions", async () => {
+      prismaMock.submission.findMany.mockResolvedValue([] as never);
+      const req = new Request("http://localhost/api/submissions?assignmentId=1", {
+        headers: { authorization: `Bearer ${signToken(STUDENT, "STUDENT")}` },
+      });
+      await GET(req);
+      expect(prismaMock.submission.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ studentId: STUDENT, assignmentId: 1 }),
+        })
+      );
+    });
+
+    it("tutor GET checks course ownership", async () => {
+      prismaMock.assignment.findUnique.mockResolvedValue({ courseId: 3 } as never);
+      prismaMock.course.findUnique.mockResolvedValue({ tutorId: TUTOR } as never);
+      prismaMock.submission.findMany.mockResolvedValue([] as never);
+
+      const req = new Request("http://localhost/api/submissions?assignmentId=1", {
+        headers: { authorization: `Bearer ${signToken(TUTOR, "TUTOR")}` },
+      });
+      const res = await GET(req);
+      expect(res.status).toBe(200);
+    });
+
+    it("returns 403 when tutor does not own course", async () => {
+      prismaMock.assignment.findUnique.mockResolvedValue({ courseId: 3 } as never);
+      prismaMock.course.findUnique.mockResolvedValue({ tutorId: "someone-else" } as never);
+
+      const req = new Request("http://localhost/api/submissions?assignmentId=1", {
+        headers: { authorization: `Bearer ${signToken(TUTOR, "TUTOR")}` },
+      });
+      const res = await GET(req);
+      expect(res.status).toBe(403);
+    });
+  });
+
+  describe("POST", () => {
+    it("returns 403 for non-student", async () => {
+      const req = new Request("http://localhost/api/submissions", {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${signToken(TUTOR, "TUTOR")}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ assignmentId: 1, content: "work" }),
+      });
+      const res = await POST(req);
+      expect(res.status).toBe(403);
+    });
+
+    it("returns 400 when content empty", async () => {
+      const req = new Request("http://localhost/api/submissions", {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${signToken(STUDENT, "STUDENT")}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ assignmentId: 1, content: "   " }),
+      });
+      const res = await POST(req);
+      expect(res.status).toBe(400);
+    });
+
+    it("creates submission when enrolled", async () => {
+      prismaMock.assignment.findUnique.mockResolvedValue({ id: 1, courseId: 2 } as never);
+      prismaMock.enrollment.findUnique.mockResolvedValue({ status: "ACTIVE" } as never);
+      prismaMock.submission.findFirst.mockResolvedValue(null);
+      prismaMock.submission.create.mockResolvedValue({
+        id: 9,
+        assignmentId: 1,
+        studentId: STUDENT,
+        content: "answer",
+      } as never);
+
+      const req = new Request("http://localhost/api/submissions", {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${signToken(STUDENT, "STUDENT")}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ assignmentId: 1, content: "answer" }),
+      });
+      const res = await POST(req);
+      expect(res.status).toBe(201);
+    });
+  });
+});
