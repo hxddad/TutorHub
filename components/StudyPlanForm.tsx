@@ -2,15 +2,28 @@
 
 import { useEffect, useState } from "react";
 
-type Task = { title: string; courseId: string; dueDate: string; };
+type Task = { title: string; courseId: string; dueDate: string; completed?:boolean;};
 type Course = { id: string; title: string; };
 
-type StudyPlanFormProps = { studentId: string };
+// type StudyPlanFormProps = { studentId: string };
+type StudyPlanFormProps = {
+  studentId: string;
+  initialTasks?: any[];
+  planId?: number;
+};
 
-export default function StudyPlanForm({ studentId }: StudyPlanFormProps) {
+export default function StudyPlanForm({ studentId, initialTasks, planId }: StudyPlanFormProps) {
   const [courses, setCourses] = useState<Course[]>([]);
-  const [tasks, setTasks] = useState<Task[]>([{ title: "", courseId: "", dueDate: "" }]);
-
+  // const [tasks, setTasks] = useState<Task[]>([{ title: "", courseId: "", dueDate: "" }]);
+  const [tasks, setTasks] = useState<Task[]>(
+    (initialTasks ?? []).map((t) => ({
+      title: t.title,
+      courseId: String(t.courseId),
+      dueDate: new Date(t.dueDate).toISOString().slice(0, 10),
+      completed: t.completed ?? false,
+    })) || [{ title: "", courseId: "", dueDate: "", completed:false }]
+  );
+  
   useEffect(() => {
 
 
@@ -37,31 +50,58 @@ export default function StudyPlanForm({ studentId }: StudyPlanFormProps) {
   };
 
   const addTask = () => setTasks([...tasks, { title: "", courseId: "", dueDate: "" }]);
+  
 
   const savePlan = async () => {
-    for (const t of tasks) {
-      if (!t.title || !t.courseId || !t.dueDate) {
-        alert("Please fill all fields for each task");
-        return;
-      }
+  for (const t of tasks) {
+    if (!t.title || !t.courseId || !t.dueDate) {
+      alert("Please fill all fields for each task");
+      return;
     }
+  }
 
-    try {
-      const res = await fetch("/api/study-plans", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ studentId, tasks }),
-      });
-      if (!res.ok) throw new Error("Failed to save study plan");
+  try {
+    const method = planId ? "PUT" : "POST";
 
-      // Handle success inside client component
-      alert("Study Plan Saved!");
-      setTasks([{ title: "", courseId: "", dueDate: "" }]); // optionally reset form
-    } catch (err) {
-      console.error(err);
-      alert("Error saving study plan");
-    }
-  };
+    const body = planId
+      ? {
+          planId,
+          tasks: tasks.map((t) => ({
+            title: t.title,
+            courseId: t.courseId,
+            dueDate: t.dueDate,
+            completed: t.completed ?? false,
+          })),
+        }
+      : {
+          studentId,
+          tasks: tasks.map((t) => ({
+            title: t.title,
+            courseId: t.courseId,
+            dueDate: t.dueDate,
+            completed: t.completed ?? false,
+          })),
+        };
+
+    const res = await fetch("/api/study-plans", {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) throw new Error("Failed to save");
+
+    alert(planId ? "Study plan updated!" : "Study plan created!");
+
+    // Reset the form after saving the study plan 
+    if (!planId) {
+      setTasks([{ title: "", courseId: "", dueDate: "" }]);
+}
+  } catch (err) {
+    console.error(err);
+    alert("Error saving study plan");
+  }
+};
 
   return (
     <div>
@@ -89,6 +129,28 @@ export default function StudyPlanForm({ studentId }: StudyPlanFormProps) {
             onChange={(e) => handleTaskChange(i, "dueDate", e.target.value)}
             className="border rounded px-2 py-1 flex-1"
           />
+
+           {/* Add checkbox to mark task as completed
+          <input
+            type="checkbox"
+            checked={t.completed || false}
+            onChange={(e) => {
+              const updated = [...tasks];
+              updated[i] = { ...updated[i], completed: e.target.checked };
+              setTasks(updated);
+            }}
+          /> */}
+
+           {/* Delete button to delete a task 
+          <button
+            onClick={() => {
+              const updated = tasks.filter((_, idx) => idx !== i);
+              setTasks(updated);
+            }}
+            className="text-red-500 font-bold px-2"
+          >
+            ✕
+          </button> */}
         </div>
       ))}
       <div className="flex gap-2">

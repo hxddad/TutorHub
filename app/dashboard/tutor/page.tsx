@@ -59,6 +59,20 @@ export default function TutorDashboardPage() {
         ))}
       </div>
 
+      <div className="group flex flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-md transition hover:border-emerald-200 hover:shadow-lg">
+        <h2 className="text-lg font-semibold text-slate-900">Study Plans</h2>
+        <p className="mt-2 text-sm text-slate-600">
+          View and manage student study plans.
+        </p>
+
+        <Link
+          href="/dashboard/tutor/study-plan/view-plans"
+          className="mt-6 inline-flex w-fit items-center rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500"
+        >
+          Study Plans →
+        </Link>
+      </div>
+
       <div className="mt-8 rounded-2xl border border-dashed border-slate-300/80 bg-slate-50/80 p-6 text-center">
         <p className="text-sm text-slate-600">
           Quick link:{" "}
@@ -71,5 +85,7 @@ export default function TutorDashboardPage() {
         </p>
       </div>
     </div>
+
+    
   );
 }
