@@ -93,6 +93,7 @@ describe("/api/submissions", () => {
       expect(res.status).toBe(400);
     });
 
+    // FR8: first-time submission returns 201
     it("creates submission when enrolled", async () => {
       prismaMock.assignment.findUnique.mockResolvedValue({ id: 1, courseId: 2 } as never);
       prismaMock.enrollment.findUnique.mockResolvedValue({ status: "ACTIVE" } as never);
@@ -114,6 +115,39 @@ describe("/api/submissions", () => {
       });
       const res = await POST(req);
       expect(res.status).toBe(201);
+    });
+
+    // FR8: re-submission (student updates existing work) returns 200 with resubmitted=true
+    // Covers the resubmitted=true branch in route.ts line 40
+    it("returns 200 with resubmitted=true when student resubmits (FR8)", async () => {
+      prismaMock.assignment.findUnique.mockResolvedValue({ id: 1, courseId: 2 } as never);
+      prismaMock.enrollment.findUnique.mockResolvedValue({ status: "ACTIVE" } as never);
+      // existing submission found → resubmit path
+      prismaMock.submission.findFirst.mockResolvedValue({
+        id: 5,
+        assignmentId: 1,
+        studentId: STUDENT,
+        content: "old answer",
+      } as never);
+      prismaMock.submission.update.mockResolvedValue({
+        id: 5,
+        assignmentId: 1,
+        studentId: STUDENT,
+        content: "updated answer",
+      } as never);
+
+      const req = new Request("http://localhost/api/submissions", {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${signToken(STUDENT, "STUDENT")}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ assignmentId: 1, content: "updated answer" }),
+      });
+      const res = await POST(req);
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.resubmitted).toBe(true);
     });
   });
 });

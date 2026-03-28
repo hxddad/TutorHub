@@ -59,6 +59,7 @@ describe("POST /api/enrollments", () => {
     expect(res.status).toBe(404);
   });
 
+  // FR4: successfully creates enrollment and returns 201
   it("creates enrollment when course published and capacity ok", async () => {
     prismaMock.course.findUnique.mockResolvedValue({
       id: 1,
@@ -84,5 +85,36 @@ describe("POST /api/enrollments", () => {
     });
     const res = await POST(req);
     expect(res.status).toBe(201);
+  });
+
+  // FR4: student who is already enrolled receives 200 with alreadyEnrolled response
+  // Covers the alreadyEnrolled=true branch in route.ts line 20-22
+  it("returns 200 with already-enrolled message when student re-enrolls (FR4)", async () => {
+    prismaMock.course.findUnique.mockResolvedValue({
+      id: 1,
+      isPublished: true,
+      capacity: 10,
+    } as never);
+    // findUnique returns an existing enrollment → alreadyEnrolled path
+    prismaMock.enrollment.findUnique.mockResolvedValue({
+      id: 1,
+      studentId: "student-uuid-1111-1111-1111-111111111111",
+      courseId: 1,
+      status: "ACTIVE",
+    } as never);
+    prismaMock.enrollment.count.mockResolvedValue(1 as never);
+
+    const req = new Request("http://localhost/api/enrollments", {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${studentToken()}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ courseId: 1 }),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.error).toMatch(/already enrolled/i);
   });
 });

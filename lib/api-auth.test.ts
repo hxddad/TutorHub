@@ -1,53 +1,108 @@
-import { describe, expect, it } from "vitest";
-import { getTokenFromRequest, requireAuth } from "@/lib/api-auth";
-import { signToken } from "@/lib/jwt";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("@/lib/jwt", () => ({ verifyToken: vi.fn() }));
+import { verifyToken } from "@/lib/jwt";
 import {
-  FIXTURE_ROLE,
-  FIXTURE_USER_ID,
-  requestWithAuthCookie,
-  requestWithBearerToken,
-} from "@/tests/fixtures/auth";
+  requireAuth,
+  requireAuthenticatedUser,
+  requireRole,
+  requireTutor,
+  requireStudent,
+  requireOwnership,
+  isAuthError,
+} from "./api-auth";
 
-describe("getTokenFromRequest (FR: API accepts Bearer or cookie)", () => {
-  it("reads Bearer token", () => {
-    const token = signToken(FIXTURE_USER_ID, FIXTURE_ROLE);
-    const req = requestWithBearerToken(token);
-    expect(getTokenFromRequest(req)).toBe(token);
-  });
+const tutorPayload = { sub: "t1", role: "TUTOR" as any };
+const studentPayload = { sub: "s1", role: "STUDENT" as any };
 
-  it("reads authToken cookie (URL-decoded)", () => {
-    const token = signToken(FIXTURE_USER_ID, FIXTURE_ROLE);
-    const req = requestWithAuthCookie(token);
-    expect(getTokenFromRequest(req)).toBe(token);
-  });
+function makeReq(token?: string): Request {
+  const headers: Record<string, string> = {};
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  return new Request("http://localhost/test", { headers });
+}
 
-  it("returns null when no auth", () => {
-    expect(getTokenFromRequest(new Request("http://localhost/"))).toBeNull();
-  });
-});
-
-describe("requireAuth (FR: protected API returns 401 without valid JWT)", () => {
-  it("returns JwtPayload for valid Bearer token", () => {
-    const token = signToken(FIXTURE_USER_ID, FIXTURE_ROLE);
-    const result = requireAuth(requestWithBearerToken(token));
-    expect(result).not.toBeInstanceOf(Response);
-    if (!(result instanceof Response)) {
-      expect(result.sub).toBe(FIXTURE_USER_ID);
-      expect(result.role).toBe(FIXTURE_ROLE);
-    }
-  });
-
-  it("returns 401 Response when token missing", () => {
-    const result = requireAuth(new Request("http://localhost/"));
-    expect(result).toBeInstanceOf(Response);
-    const res = result as Response;
-    expect(res.status).toBe(401);
-  });
-
-  it("returns 401 Response when token invalid", () => {
-    const req = requestWithBearerToken("bad.token.here");
-    const result = requireAuth(req);
-    expect(result).toBeInstanceOf(Response);
+describe("api-auth helpers", () => {
+  it("requireAuth returns 401 with no token", () => {
+    vi.mocked(verifyToken).mockReturnValue(null);
+    const result = requireAuth(makeReq());
+    expect(result instanceof Response).toBe(true);
     expect((result as Response).status).toBe(401);
+  });
+
+  it("requireAuth returns payload for valid token", () => {
+    vi.mocked(verifyToken).mockReturnValue(tutorPayload as any);
+    const result = requireAuth(makeReq("good-token"));
+    expect(isAuthError(result)).toBe(false);
+    expect((result as any).sub).toBe("t1");
+  });
+
+  it("requireTutor returns 403 for STUDENT", () => {
+    vi.mocked(verifyToken).mockReturnValue(studentPayload as any);
+    const result = requireTutor(makeReq("student-token"));
+    expect(result instanceof Response).toBe(true);
+    expect((result as Response).status).toBe(403);
+  });
+
+  it("requireTutor returns payload for TUTOR", () => {
+    vi.mocked(verifyToken).mockReturnValue(tutorPayload as any);
+    const result = requireTutor(makeReq("tutor-token"));
+    expect(isAuthError(result)).toBe(false);
+  });
+
+  it("requireStudent returns 403 for TUTOR", () => {
+    vi.mocked(verifyToken).mockReturnValue(tutorPayload as any);
+    const result = requireStudent(makeReq("tutor-token"));
+    expect((result as Response).status).toBe(403);
+  });
+
+  it("requireOwnership returns 403 when IDs do not match", () => {
+    const result = requireOwnership(tutorPayload, "other-id");
+    expect(result instanceof Response).toBe(true);
+    expect((result as Response).status).toBe(403);
+  });
+
+  it("requireOwnership returns payload when IDs match", () => {
+    const result = requireOwnership(tutorPayload, "t1");
+    expect(isAuthError(result)).toBe(false);
+  });
+
+  // NFR1: token present but verifyToken returns null (expired/tampered) → 401 "Invalid token"
+  // This covers the branch at api-auth.ts lines 30-35 that was previously uncovered
+  it("requireAuth returns 401 with 'Invalid token' when token fails verification (NFR1)", async () => {
+    vi.mocked(verifyToken).mockReturnValue(null);
+    const result = requireAuth(makeReq("bad-token"));
+    expect(result instanceof Response).toBe(true);
+    expect((result as Response).status).toBe(401);
+    const body = await (result as Response).json();
+    expect(body.error).toBe("Invalid token");
+  });
+
+  // NFR1: requireAuthenticatedUser is an alias for requireAuth — both return same result
+  // Covers the alias function at api-auth.ts lines 40-42
+  it("requireAuthenticatedUser delegates to requireAuth and returns payload (NFR1)", () => {
+    vi.mocked(verifyToken).mockReturnValue(tutorPayload as any);
+    const result = requireAuthenticatedUser(makeReq("good-token"));
+    expect(isAuthError(result)).toBe(false);
+    expect((result as any).sub).toBe("t1");
+  });
+
+  // NFR1: getTokenFromRequest reads from cookie when no Authorization header is present
+  // Ensures the cookie-extraction branch is exercised
+  it("requireAuth accepts token from cookie (NFR1)", () => {
+    vi.mocked(verifyToken).mockReturnValue(studentPayload as any);
+    const reqWithCookie = new Request("http://localhost/test", {
+      headers: { cookie: "authToken=cookie-token-value" },
+    });
+    const result = requireAuth(reqWithCookie);
+    expect(isAuthError(result)).toBe(false);
+    expect((result as any).sub).toBe("s1");
+  });
+
+  // NFR2: requireStudent returns payload for a STUDENT token
+  it("requireStudent returns payload for STUDENT (NFR2)", () => {
+    vi.mocked(verifyToken).mockReturnValue(studentPayload as any);
+    const result = requireStudent(makeReq("student-token"));
+    expect(isAuthError(result)).toBe(false);
+    expect((result as any).role).toBe("STUDENT");
   });
 });

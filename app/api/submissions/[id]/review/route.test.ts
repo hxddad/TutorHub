@@ -19,6 +19,23 @@ describe("PATCH /api/submissions/[id]/review", () => {
     vi.clearAllMocks();
   });
 
+  // NFR4: non-numeric id should return 400 before any DB call
+  // Covers the isNaN branch in review/route.ts line 17-19
+  it("returns 400 for non-numeric submission id (NFR4)", async () => {
+    const req = new Request("http://localhost/api/submissions/abc/review", {
+      method: "PATCH",
+      headers: {
+        authorization: `Bearer ${signToken(TUTOR, "TUTOR")}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ grade: 85 }),
+    });
+    const res = await PATCH(req, { params: { id: "abc" } });
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(data.error).toMatch(/invalid submission id/i);
+  });
+
   it("returns 403 for non-tutor", async () => {
     const req = new Request("http://localhost/api/submissions/1/review", {
       method: "PATCH",

@@ -1,47 +1,73 @@
 "use client";
 
+// StudyPlanForm.tsx
+// Used by students to create a new study plan (POST) or edit an existing one (PUT)
+// Also used by tutors to edit a student's plan (PUT) — but only if the student is
+// enrolled in one of the tutor's courses (enforced server-side via NFR2)
+// FR12 (create), FR13 (update)
+
 import { useEffect, useState } from "react";
 
-type Task = { title: string; courseId: string; dueDate: string; completed?:boolean;};
-type Course = { id: string; title: string; };
+type Task = { title: string; courseId: string; dueDate: string; completed?: boolean };
+type Course = { id: string | number; title: string };
 
-// type StudyPlanFormProps = { studentId: string };
 type StudyPlanFormProps = {
-  studentId: string;
-  initialTasks?: any[];
+  // planId is set when editing an existing plan; absent for new plan creation
   planId?: number;
+  // initialTasks pre-fills the form when editing
+  initialTasks?: any[];
+  // role is passed in so the form knows which API to call for the course list
+  role?: "STUDENT" | "TUTOR";
 };
 
-export default function StudyPlanForm({ studentId, initialTasks, planId }: StudyPlanFormProps) {
+export default function StudyPlanForm({ planId, initialTasks, role = "STUDENT" }: StudyPlanFormProps) {
   const [courses, setCourses] = useState<Course[]>([]);
-  // const [tasks, setTasks] = useState<Task[]>([{ title: "", courseId: "", dueDate: "" }]);
   const [tasks, setTasks] = useState<Task[]>(
-    (initialTasks ?? []).map((t) => ({
-      title: t.title,
-      courseId: String(t.courseId),
-      dueDate: new Date(t.dueDate).toISOString().slice(0, 10),
-      completed: t.completed ?? false,
-    })) || [{ title: "", courseId: "", dueDate: "", completed:false }]
+    (initialTasks ?? []).length > 0
+      ? (initialTasks ?? []).map((t) => ({
+          title: t.title,
+          courseId: String(t.courseId),
+          dueDate: new Date(t.dueDate).toISOString().slice(0, 10),
+          completed: t.completed ?? false,
+        }))
+      : [{ title: "", courseId: "", dueDate: "", completed: false }]
   );
-  
+  const [loading, setLoading] = useState(false);
+
+  // FR12/FR13 — load the relevant course list
+  // For new student plans: GET /api/courses/enrolled (student's enrolled courses)
+  // For existing plans being edited: GET /api/study-plans/{id}/edit-data (handles both roles)
   useEffect(() => {
-
-
     async function loadCourses() {
       try {
-        const res = await fetch(`/api/courses/enrolled?studentId=${studentId}`);
+        let url: string;
+
+        if (planId) {
+          // editing an existing plan — use the role-aware edit-data endpoint
+          // this works for both students and tutors
+          const res = await fetch(`/api/study-plans/${planId}/edit-data`);
+          if (!res.ok) {
+            console.error("Failed to load edit data:", await res.json());
+            return;
+          }
+          const data = await res.json();
+          if (Array.isArray(data.courses)) setCourses(data.courses);
+          return;
+        }
+
+        // creating a new plan — students load their own enrolled courses
+        url = "/api/courses/enrolled";
+        const res = await fetch(url);
         const data = await res.json();
         if (Array.isArray(data)) setCourses(data);
         else setCourses([]);
       } catch (err) {
-        console.error("Failed to load enrolled courses:", err);
+        console.error("Failed to load courses:", err);
         setCourses([]);
       }
     }
-
     loadCourses();
-  }, [studentId]);
-
+  }, [planId]);
 
   const handleTaskChange = (index: number, field: keyof Task, value: string) => {
     const updated = [...tasks];
@@ -50,58 +76,64 @@ export default function StudyPlanForm({ studentId, initialTasks, planId }: Study
   };
 
   const addTask = () => setTasks([...tasks, { title: "", courseId: "", dueDate: "" }]);
-  
 
   const savePlan = async () => {
-  for (const t of tasks) {
-    if (!t.title || !t.courseId || !t.dueDate) {
-      alert("Please fill all fields for each task");
-      return;
+    // NFR4 — client-side check before hitting the server
+    for (const t of tasks) {
+      if (!t.title || !t.courseId || !t.dueDate) {
+        alert("Please fill all fields for each task");
+        return;
+      }
     }
-  }
 
-  try {
-    const method = planId ? "PUT" : "POST";
+    setLoading(true);
+    try {
+      const method = planId ? "PUT" : "POST";
 
-    const body = planId
-      ? {
-          planId,
-          tasks: tasks.map((t) => ({
-            title: t.title,
-            courseId: t.courseId,
-            dueDate: t.dueDate,
-            completed: t.completed ?? false,
-          })),
-        }
-      : {
-          studentId,
-          tasks: tasks.map((t) => ({
-            title: t.title,
-            courseId: t.courseId,
-            dueDate: t.dueDate,
-            completed: t.completed ?? false,
-          })),
-        };
+      // FR12 (POST) — studentId is NOT sent; server always uses the JWT
+      // FR13 (PUT) — planId tells the server which plan to update
+      const body = planId
+        ? {
+            planId,
+            tasks: tasks.map((t) => ({
+              title: t.title,
+              courseId: t.courseId,
+              dueDate: t.dueDate,
+              completed: t.completed ?? false,
+            })),
+          }
+        : {
+            tasks: tasks.map((t) => ({
+              title: t.title,
+              courseId: t.courseId,
+              dueDate: t.dueDate,
+              completed: t.completed ?? false,
+            })),
+          };
 
-    const res = await fetch("/api/study-plans", {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
+      const res = await fetch("/api/study-plans", {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
 
-    if (!res.ok) throw new Error("Failed to save");
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || "Failed to save");
+        return;
+      }
 
-    alert(planId ? "Study plan updated!" : "Study plan created!");
-
-    // Reset the form after saving the study plan 
-    if (!planId) {
-      setTasks([{ title: "", courseId: "", dueDate: "" }]);
-}
-  } catch (err) {
-    console.error(err);
-    alert("Error saving study plan");
-  }
-};
+      alert(planId ? "Study plan updated!" : "Study plan created!");
+      if (!planId) {
+        setTasks([{ title: "", courseId: "", dueDate: "" }]);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error saving study plan");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div>
@@ -120,7 +152,7 @@ export default function StudyPlanForm({ studentId, initialTasks, planId }: Study
           >
             <option value="">Select course</option>
             {courses.map((c) => (
-              <option key={c.id} value={c.id}>{c.title}</option>
+              <option key={c.id} value={String(c.id)}>{c.title}</option>
             ))}
           </select>
           <input
@@ -129,33 +161,19 @@ export default function StudyPlanForm({ studentId, initialTasks, planId }: Study
             onChange={(e) => handleTaskChange(i, "dueDate", e.target.value)}
             className="border rounded px-2 py-1 flex-1"
           />
-
-           {/* Add checkbox to mark task as completed
-          <input
-            type="checkbox"
-            checked={t.completed || false}
-            onChange={(e) => {
-              const updated = [...tasks];
-              updated[i] = { ...updated[i], completed: e.target.checked };
-              setTasks(updated);
-            }}
-          /> */}
-
-           {/* Delete button to delete a task 
-          <button
-            onClick={() => {
-              const updated = tasks.filter((_, idx) => idx !== i);
-              setTasks(updated);
-            }}
-            className="text-red-500 font-bold px-2"
-          >
-            ✕
-          </button> */}
         </div>
       ))}
       <div className="flex gap-2">
-        <button onClick={addTask} className="bg-blue-600 text-white px-3 py-1 rounded">+ Add Task</button>
-        <button onClick={savePlan} className="bg-green-600 text-white px-3 py-1 rounded">Save Plan</button>
+        <button onClick={addTask} className="bg-blue-600 text-white px-3 py-1 rounded">
+          + Add Task
+        </button>
+        <button
+          onClick={savePlan}
+          disabled={loading}
+          className="bg-green-600 text-white px-3 py-1 rounded disabled:opacity-50"
+        >
+          {loading ? "Saving…" : "Save Plan"}
+        </button>
       </div>
     </div>
   );

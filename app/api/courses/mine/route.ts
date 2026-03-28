@@ -1,42 +1,21 @@
-import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { verifyToken } from "@/lib/jwt";
+// app/api/courses/mine/route.ts
+// FR5 - tutor's dashboard course list; NFR1, NFR2
+// Route handles request/response only — uses courseService
 
-// GET /api/courses/mine
-// returns the courses that belong to the logged-in tutor
+import { NextResponse } from "next/server";
+import { requireTutor, isAuthError } from "@/lib/api-auth";
+import * as courseService from "@/lib/services/courseService";
+
+// FR5 + NFR1 + NFR2 - return compact summary of the logged-in tutor's courses
 export async function GET(request: Request) {
   try {
-    // grab token
-    const authHeader = request.headers.get("authorization") || "";
-    let token: string | null = null;
-    if (authHeader.startsWith("Bearer ")) token = authHeader.slice(7);
-    else {
-      const cookie = request.headers.get("cookie") || "";
-      const m = /authToken=([^;]+)/.exec(cookie);
-      if (m) token = decodeURIComponent(m[1]);
-    }
-    if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const auth = requireTutor(request);
+    if (isAuthError(auth)) return auth;
 
-    const payload = verifyToken(token);
-    if (!payload) return NextResponse.json({ error: "Invalid token" }, { status: 401 });
-    if (payload.role !== "TUTOR") {
-      return NextResponse.json({ error: "Only tutors can access this" }, { status: 403 });
-    }
-
-    const courses = await prisma.course.findMany({
-      where: { tutorId: payload.sub },
-      orderBy: { createdAt: "desc" },
-      select: {
-        id: true,
-        title: true,
-        subject: true,
-        isPublished: true,
-        _count: { select: { enrollments: true, assignments: true } },
-      },
-    });
-
+    const courses = await courseService.listTutorCoursesSummary(auth.sub);
     return NextResponse.json(courses);
-  } catch (err) {
+  } catch (err: any) {
+    if (err?.status) return NextResponse.json({ error: err.message }, { status: err.status });
     console.error("GET /api/courses/mine error:", err);
     return NextResponse.json({ error: "Failed to fetch courses" }, { status: 500 });
   }

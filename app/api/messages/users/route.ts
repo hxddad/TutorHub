@@ -1,35 +1,24 @@
-import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { requireAuth } from "@/lib/api-auth";
+// app/api/messages/users/route.ts
+// User search for the "start a conversation" UI
+// FR10 (message user search), NFR1 (auth), NFR2 (excludes self)
+// Route handles request/response only — DB access via messageRepository
 
-/**
- * GET /api/messages/users?q=   — search users to start a conversation (excludes self).
- */
+import { NextResponse } from "next/server";
+import { requireAuth, isAuthError } from "@/lib/api-auth";
+import { searchUsers } from "@/lib/repositories/messageRepository";
+
+// FR10 + NFR1 + NFR2 - search for users to message; self is always excluded
 export async function GET(request: Request) {
+  // NFR1 - must be logged in
   const auth = requireAuth(request);
-  if (auth instanceof Response) return auth;
+  if (isAuthError(auth)) return auth;
 
   const { searchParams } = new URL(request.url);
   const q = (searchParams.get("q") || "").trim();
 
   try {
-    const users = await prisma.user.findMany({
-      where: {
-        id: { not: auth.sub },
-        ...(q
-          ? {
-              OR: [
-                { fullName: { contains: q, mode: "insensitive" } },
-                { email: { contains: q, mode: "insensitive" } },
-              ],
-            }
-          : {}),
-      },
-      select: { id: true, fullName: true, email: true, role: true },
-      take: 30,
-      orderBy: { fullName: "asc" },
-    });
-
+    // NFR2 - auth.sub is excluded from results so user can't message themselves
+    const users = await searchUsers(auth.sub, q);
     return NextResponse.json({ users });
   } catch (err) {
     console.error("GET /api/messages/users", err);

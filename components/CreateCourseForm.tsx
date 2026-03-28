@@ -1,8 +1,14 @@
 "use client";
 
+// CreateCourseForm.tsx
+// Lets a tutor create a new course
+// FR5 (tutors create courses), NFR4 (client-side validation before submitting)
+
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 
+// tutorId prop is kept for backward compatibility but is no longer sent to the API
+// the server reads the tutor identity from the JWT cookie (NFR2)
 export default function CreateCourseForm({ tutorId }: { tutorId?: string }) {
   const router = useRouter();
   const [title, setTitle] = useState("");
@@ -17,12 +23,17 @@ export default function CreateCourseForm({ tutorId }: { tutorId?: string }) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+
+    // NFR4 — basic client-side check before hitting the server
     if (!title.trim() || !subject.trim()) {
       setError("Title and subject are required.");
       return;
     }
+
     setSaving(true);
     try {
+      // FR5 — send only course data; tutorId is intentionally omitted
+      // the server always derives the tutor identity from the JWT (NFR2)
       const payload: any = {
         title: title.trim(),
         subject: subject.trim(),
@@ -31,18 +42,19 @@ export default function CreateCourseForm({ tutorId }: { tutorId?: string }) {
         price: price ? Number(price) : null,
         isPublished,
       };
-      if (tutorId) payload.tutorId = tutorId;
+
       const res = await fetch("/api/courses", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
+
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setError(data.error || "Failed to create course");
         return;
       }
-      // Redirect to public courses list for quick verification
+
       router.push("/courses");
     } catch (e) {
       setError("Failed to create course");

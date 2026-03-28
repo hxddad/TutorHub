@@ -13,9 +13,8 @@ export default async function EditStudyPlanPage({ params }: any) {
     <main className="p-8">
       <h1 className="text-2xl font-semibold mb-4">Edit Study Plan</h1>
       <StudyPlanForm
-        studentId={plan.studentId}
-        initialTasks={plan.tasks} 
-        planId={plan.id}          
+        initialTasks={plan.tasks}
+        planId={plan.id}
       />
     </main>
   );

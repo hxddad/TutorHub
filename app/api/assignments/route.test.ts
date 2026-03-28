@@ -1,105 +1,116 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const prismaMock = vi.hoisted(() => ({
-  enrollment: { findUnique: vi.fn() },
-  course: { findUnique: vi.fn() },
-  assignment: { findMany: vi.fn(), create: vi.fn() },
-}));
+vi.mock("@/lib/jwt", () => ({ verifyToken: vi.fn() }));
 
+const prismaMock = vi.hoisted(() => ({
+  assignment: { findMany: vi.fn(), create: vi.fn() },
+  course: { findUnique: vi.fn() },
+  enrollment: { findUnique: vi.fn() },
+}));
 vi.mock("@/lib/prisma", () => ({ prisma: prismaMock }));
 
-import { signToken } from "@/lib/jwt";
+import { verifyToken } from "@/lib/jwt";
 import { GET, POST } from "./route";
 
-const STUDENT_ID = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
-const TUTOR_ID = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
+const TUTOR = "tutor-1";
+const STUDENT = "student-1";
+const tutorPayload = { sub: TUTOR, role: "TUTOR" };
+const studentPayload = { sub: STUDENT, role: "STUDENT" };
+
+function makeReq(method: string, url: string, body?: object, token = "token"): Request {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
+  };
+  return new Request(url, {
+    method,
+    headers,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+}
 
 describe("/api/assignments", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+  beforeEach(() => vi.clearAllMocks());
 
   describe("GET", () => {
-    it("returns 400 without courseId", async () => {
-      const req = new Request("http://localhost/api/assignments", {
-        headers: { authorization: `Bearer ${signToken(STUDENT_ID, "STUDENT")}` },
-      });
-      const res = await GET(req);
+    it("returns 401 when unauthenticated", async () => {
+      vi.mocked(verifyToken).mockReturnValue(null);
+      const res = await GET(new Request("http://localhost/api/assignments?courseId=1"));
+      expect(res.status).toBe(401);
+    });
+
+    it("returns 400 when courseId missing", async () => {
+      vi.mocked(verifyToken).mockReturnValue(tutorPayload as any);
+      const res = await GET(makeReq("GET", "http://localhost/api/assignments"));
       expect(res.status).toBe(400);
     });
 
-    it("returns assignments for enrolled student", async () => {
-      prismaMock.enrollment.findUnique.mockResolvedValue({
-        status: "ACTIVE",
-      } as never);
-      prismaMock.assignment.findMany.mockResolvedValue([] as never);
-
-      const req = new Request(`http://localhost/api/assignments?courseId=1`, {
-        headers: { authorization: `Bearer ${signToken(STUDENT_ID, "STUDENT")}` },
-      });
-      const res = await GET(req);
-      expect(res.status).toBe(200);
-    });
-
-    it("returns 403 for student not enrolled", async () => {
-      prismaMock.enrollment.findUnique.mockResolvedValue(null);
-
-      const req = new Request(`http://localhost/api/assignments?courseId=1`, {
-        headers: { authorization: `Bearer ${signToken(STUDENT_ID, "STUDENT")}` },
-      });
-      const res = await GET(req);
+    it("returns 403 when tutor does not own course", async () => {
+      vi.mocked(verifyToken).mockReturnValue(tutorPayload as any);
+      prismaMock.course.findUnique.mockResolvedValue({ tutorId: "other" } as never);
+      const res = await GET(makeReq("GET", "http://localhost/api/assignments?courseId=1"));
       expect(res.status).toBe(403);
     });
 
-    it("allows tutor who owns course", async () => {
-      prismaMock.course.findUnique.mockResolvedValue({
-        id: 1,
-        tutorId: TUTOR_ID,
-      } as never);
-      prismaMock.assignment.findMany.mockResolvedValue([] as never);
+    it("returns 403 when student is not enrolled", async () => {
+      vi.mocked(verifyToken).mockReturnValue(studentPayload as any);
+      prismaMock.enrollment.findUnique.mockResolvedValue(null);
+      const res = await GET(makeReq("GET", "http://localhost/api/assignments?courseId=1"));
+      expect(res.status).toBe(403);
+    });
 
-      const req = new Request(`http://localhost/api/assignments?courseId=1`, {
-        headers: { authorization: `Bearer ${signToken(TUTOR_ID, "TUTOR")}` },
-      });
-      const res = await GET(req);
+    it("returns assignments when tutor owns course", async () => {
+      vi.mocked(verifyToken).mockReturnValue(tutorPayload as any);
+      prismaMock.course.findUnique.mockResolvedValue({ tutorId: TUTOR } as never);
+      prismaMock.assignment.findMany.mockResolvedValue([{ id: 1, title: "HW1" }] as never);
+      const res = await GET(makeReq("GET", "http://localhost/api/assignments?courseId=1"));
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data).toHaveLength(1);
+    });
+
+    it("returns assignments when student is enrolled", async () => {
+      vi.mocked(verifyToken).mockReturnValue(studentPayload as any);
+      prismaMock.enrollment.findUnique.mockResolvedValue({ status: "ACTIVE" } as never);
+      prismaMock.assignment.findMany.mockResolvedValue([{ id: 2, title: "HW2" }] as never);
+      const res = await GET(makeReq("GET", "http://localhost/api/assignments?courseId=1"));
       expect(res.status).toBe(200);
     });
   });
 
   describe("POST", () => {
-    it("returns 403 for non-tutor", async () => {
-      const req = new Request("http://localhost/api/assignments", {
-        method: "POST",
-        headers: {
-          authorization: `Bearer ${signToken(STUDENT_ID, "STUDENT")}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ courseId: 1, title: "HW" }),
-      });
-      const res = await POST(req);
+    it("returns 403 when student tries to create", async () => {
+      vi.mocked(verifyToken).mockReturnValue(studentPayload as any);
+      const res = await POST(
+        makeReq("POST", "http://localhost/api/assignments", { courseId: 1, title: "HW" })
+      );
+      expect(res.status).toBe(403);
+    });
+
+    it("returns 400 when title missing", async () => {
+      vi.mocked(verifyToken).mockReturnValue(tutorPayload as any);
+      const res = await POST(
+        makeReq("POST", "http://localhost/api/assignments", { courseId: 1 })
+      );
+      expect(res.status).toBe(400);
+    });
+
+    it("returns 403 when tutor does not own course", async () => {
+      vi.mocked(verifyToken).mockReturnValue(tutorPayload as any);
+      prismaMock.course.findUnique.mockResolvedValue({ tutorId: "other" } as never);
+      const res = await POST(
+        makeReq("POST", "http://localhost/api/assignments", { courseId: 1, title: "HW" })
+      );
       expect(res.status).toBe(403);
     });
 
     it("creates assignment when tutor owns course", async () => {
-      prismaMock.course.findUnique.mockResolvedValue({
-        id: 1,
-        tutorId: TUTOR_ID,
-      } as never);
-      prismaMock.assignment.create.mockResolvedValue({
-        id: 10,
-        courseId: 1,
-        title: "HW1",
-      } as never);
-
-      const req = new Request("http://localhost/api/assignments", {
-        method: "POST",
-        headers: {
-          authorization: `Bearer ${signToken(TUTOR_ID, "TUTOR")}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ courseId: 1, title: "HW1" }),
-      });
-      const res = await POST(req);
+      vi.mocked(verifyToken).mockReturnValue(tutorPayload as any);
+      prismaMock.course.findUnique.mockResolvedValue({ tutorId: TUTOR } as never);
+      prismaMock.assignment.create.mockResolvedValue({ id: 1, title: "HW", courseId: 1 } as never);
+      const res = await POST(
+        makeReq("POST", "http://localhost/api/assignments", { courseId: 1, title: "HW" })
+      );
       expect(res.status).toBe(201);
     });
   });

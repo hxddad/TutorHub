@@ -41,8 +41,16 @@ Thumbs.db
 coverage/
 .nyc_output/
 
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
 # Misc
 *.log
 *.pid
 *.seed
 .cache/
+
+# Claude Code memory
+.claude/

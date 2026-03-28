@@ -1,68 +1,65 @@
+// app/api/study-plans/route.ts
+// Handles creating, viewing, and updating student study plans
+// FR12 (create), FR13 (view/update), NFR1 (auth), NFR2 (ownership)
+
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { requireAuth, requireStudent, isAuthError } from "@/lib/api-auth";
+import * as studyPlanService from "@/lib/services/studyPlanService";
 
-type TaskInput = { title: string; dueDate: string; courseId: string | number };
-
+// FR13 + NFR1 + NFR2 - return the logged-in student's own study plans
+// studentId query param is ignored — identity always comes from the JWT
 export async function GET(req: Request) {
-  const url = new URL(req.url);
-  const studentId = url.searchParams.get("studentId");
+  // NFR1 - must be logged in as a STUDENT
+  const auth = requireStudent(req);
+  if (isAuthError(auth)) return auth;
 
-  if (!studentId) return NextResponse.json([], { status: 400 });
-
-  const plans = await prisma.studyPlan.findMany({
-    where: { studentId },
-    include: { tasks: true },
-  });
-
+  // NFR2 - auth.sub is the verified student ID, not something the client can fake
+  const plans = await studyPlanService.getStudentPlans(auth.sub);
   return NextResponse.json(plans);
 }
 
+// FR12 + NFR1 + NFR2 + NFR4 - create a study plan for the logged-in student
+// studentId in the body is ignored — we always use auth.sub from the token
 export async function POST(req: Request) {
-  const body = await req.json();
-  const { studentId, tasks } = body as { studentId: string; tasks: TaskInput[] };
+  try {
+    // NFR1 - must be logged in as a STUDENT to create a plan
+    const auth = requireStudent(req);
+    if (isAuthError(auth)) return auth;
 
-  // validate student exists
-  const studentExists = await prisma.user.findUnique({ where: { id: studentId } });
-  if (!studentExists) {
-    return NextResponse.json({ error: "Student not found" }, { status: 400 });
+    const body = await req.json().catch(() => ({}));
+
+    // NFR2 - always creates the plan for the logged-in student, not whoever the client says
+    const plan = await studyPlanService.createPlan(auth.sub, body);
+    return NextResponse.json(plan);
+  } catch (err: any) {
+    if (err?.status) return NextResponse.json({ error: err.message }, { status: err.status });
+    console.error("POST /api/study-plans error", err);
+    return NextResponse.json({ error: "Failed to create study plan" }, { status: 500 });
   }
-
-  // create study plan with tasks
-  const newPlan = await prisma.studyPlan.create({
-    data: {
-      studentId,
-      tasks: {
-        create: tasks.map((t) => ({
-          title: t.title,
-          dueDate: new Date(t.dueDate),
-          courseId: Number(t.courseId), // <-- must provide a valid courseId
-        })),
-      },
-    },
-    include: { tasks: true },
-  });
-
-  return NextResponse.json(newPlan);
 }
 
+// FR13 + NFR1 + NFR2 + NFR4 - update a study plan
+// Students can only update their own plan.
+// Tutors can only update a plan if the student is enrolled in at least one of the tutor's courses —
+// this prevents arbitrary tutors from editing any student's plan (NFR2 shared-course rule).
 export async function PUT(req: Request) {
-  const body = await req.json();
-  const { planId, tasks } = body as { planId: number; tasks: TaskInput[] };
+  try {
+    // NFR1 - must be logged in
+    const auth = requireAuth(req);
+    if (isAuthError(auth)) return auth;
 
-  const updated = await prisma.studyPlan.update({
-    where: { id: planId },
-    data: {
-      tasks: {
-        deleteMany: {}, // remove old tasks
-        create: tasks.map((t) => ({
-          title: t.title,
-          dueDate: new Date(t.dueDate),
-          courseId: Number(t.courseId),
-        })),
-      },
-    },
-    include: { tasks: true },
-  });
+    const body = await req.json().catch(() => ({}));
+    const planId = Number(body.planId);
+    if (!planId) return NextResponse.json({ error: "planId is required" }, { status: 400 });
 
-  return NextResponse.json(updated);
+    // NFR2 - studyPlanService enforces:
+    //   • students can only edit their own plan
+    //   • tutors can edit only if the student is enrolled in one of their courses
+    const plan = await studyPlanService.updatePlan(planId, auth.sub, auth.role, body);
+    return NextResponse.json(plan);
+  } catch (err: any) {
+    if (err?.status) return NextResponse.json({ error: err.message }, { status: err.status });
+    console.error("PUT /api/study-plans error", err);
+    return NextResponse.json({ error: "Failed to update study plan" }, { status: 500 });
+  }
 }

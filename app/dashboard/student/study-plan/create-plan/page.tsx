@@ -12,10 +12,7 @@ export default async function CreateStudyPlanPage() {
     const payload = verifyToken(token);
     if (!payload || payload.role !== "STUDENT") return <p>Forbidden</p>;
 
-    const studentId = payload.sub;
-
-    // Only pass studentId. Do NOT pass inline functions.
-   return (
+    return (
       <main className="p-8">
         {/* Header + Back link */}
         <div className="container mx-auto px-4 mb-6 flex items-center justify-between">
@@ -30,7 +27,7 @@ export default async function CreateStudyPlanPage() {
 
         {/* Form */}
         <div className="container mx-auto px-4">
-          <StudyPlanForm studentId={studentId} />
+          <StudyPlanForm />
         </div>
       </main>
     );

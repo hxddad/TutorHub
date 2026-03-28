@@ -1,26 +1,16 @@
-import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+// app/api/courses/route.ts
+// FR4 (browse), FR5 (create/update/archive), NFR1, NFR2, NFR4
 
+import { NextResponse } from "next/server";
+import { requireAuth, requireTutor, isAuthError } from "@/lib/api-auth";
+import * as courseService from "@/lib/services/courseService";
+
+// FR4 - any visitor can browse published courses
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const subject = searchParams.get("subject");
-    const where: any = { isPublished: true };
-
-    if (subject) {
-      where.subject = subject;
-    }
-
-    const courses = await prisma.course.findMany({
-      where,
-      orderBy: { createdAt: "desc" },
-      include: {
-        tutor: {
-          select: { id: true, fullName: true, avatar: true },
-        },
-      },
-    });
-
+    const subject = searchParams.get("subject") ?? undefined;
+    const courses = await courseService.listPublishedCourses(subject);
     return NextResponse.json(courses);
   } catch (err) {
     console.error("GET /api/courses error", err);
@@ -28,38 +18,59 @@ export async function GET(request: Request) {
   }
 }
 
+// FR5 + NFR1 + NFR2 - only authenticated tutors can create courses
+// tutorId comes from the JWT — body tutorId is always ignored
 export async function POST(request: Request) {
   try {
+    const auth = requireTutor(request);
+    if (isAuthError(auth)) return auth;
+
     const body = await request.json().catch(() => ({}));
-    // Prefer header (set by dashboard middleware) fallback to body.tutorId
-    const hdrs = (request as any).headers || new Headers();
-    const tutorIdHeader = hdrs.get ? hdrs.get("x-user-id") : null;
-    const tutorId = tutorIdHeader || body.tutorId;
-
-    if (!tutorId) {
-      return NextResponse.json({ error: "tutorId is required" }, { status: 400 });
-    }
-    const title = (body.title || "").toString().trim();
-    const subject = (body.subject || "").toString().trim();
-    if (!title || !subject) {
-      return NextResponse.json({ error: "title and subject are required" }, { status: 400 });
-    }
-
-    const course = await prisma.course.create({
-      data: {
-        title,
-        subject,
-        description: body.description || null,
-        tutorId,
-        price: typeof body.price === "number" ? body.price : body.price ? parseFloat(body.price) : null,
-        level: body.level || null,
-        isPublished: !!body.isPublished,
-      },
-    });
-
+    const course = await courseService.createCourse(auth.sub, body);
     return NextResponse.json(course, { status: 201 });
-  } catch (err) {
+  } catch (err: any) {
+    if (err?.status) return NextResponse.json({ error: err.message }, { status: err.status });
     console.error("POST /api/courses error", err);
     return NextResponse.json({ error: "Failed to create course" }, { status: 500 });
+  }
+}
+
+// FR5 + NFR2 - tutor updates their own course
+export async function PATCH(request: Request) {
+  try {
+    const auth = requireTutor(request);
+    if (isAuthError(auth)) return auth;
+
+    const { searchParams } = new URL(request.url);
+    const id = Number(searchParams.get("id"));
+    if (!id) return NextResponse.json({ error: "Course id is required" }, { status: 400 });
+
+    const body = await request.json().catch(() => ({}));
+    const course = await courseService.updateCourse(id, auth.sub, body);
+    return NextResponse.json(course);
+  } catch (err: any) {
+    if (err?.status) return NextResponse.json({ error: err.message }, { status: err.status });
+    console.error("PATCH /api/courses error", err);
+    return NextResponse.json({ error: "Failed to update course" }, { status: 500 });
+  }
+}
+
+// FR5 + NFR2 - archive (unpublish) a course instead of hard-deleting
+// preserves all enrollments, assignments and submissions
+export async function DELETE(request: Request) {
+  try {
+    const auth = requireTutor(request);
+    if (isAuthError(auth)) return auth;
+
+    const { searchParams } = new URL(request.url);
+    const id = Number(searchParams.get("id"));
+    if (!id) return NextResponse.json({ error: "Course id is required" }, { status: 400 });
+
+    const course = await courseService.archiveCourse(id, auth.sub);
+    return NextResponse.json({ success: true, course });
+  } catch (err: any) {
+    if (err?.status) return NextResponse.json({ error: err.message }, { status: err.status });
+    console.error("DELETE /api/courses error", err);
+    return NextResponse.json({ error: "Failed to archive course" }, { status: 500 });
   }
 }

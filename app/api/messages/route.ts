@@ -1,37 +1,26 @@
-import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { requireAuth } from "@/lib/api-auth";
-import {
-  getConversation,
-  listThreadsForUser,
-  markThreadRead,
-  sendMessage,
-} from "@/lib/messages";
+// app/api/messages/route.ts
+// Direct messaging between users
+// FR10 (open/view threads), FR11 (send messages), NFR1 (auth), NFR4 (validation)
 
-/**
- * GET /api/messages           → { threads }
- * GET /api/messages?with=uuid → { messages } (marks incoming as read)
- */
+import { NextResponse } from "next/server";
+import { requireAuth, isAuthError } from "@/lib/api-auth";
+import * as messageService from "@/lib/services/messageService";
+
+// FR10 + NFR1 - get message threads or a specific conversation
+// GET /api/messages           → all threads for logged-in user
+// GET /api/messages?with=uuid → conversation with a specific user
 export async function GET(request: Request) {
+  // NFR1 - must be logged in to access messages
   const auth = requireAuth(request);
-  if (auth instanceof Response) return auth;
+  if (isAuthError(auth)) return auth;
 
   const { searchParams } = new URL(request.url);
   const withUserId = searchParams.get("with")?.trim();
 
   try {
     if (withUserId) {
-      if (withUserId === auth.sub) {
-        return NextResponse.json({ error: "Cannot message yourself" }, { status: 400 });
-      }
-      const peer = await prisma.user.findUnique({ where: { id: withUserId } });
-      if (!peer) {
-        return NextResponse.json({ error: "User not found" }, { status: 404 });
-      }
-
-      const messages = await getConversation(auth.sub, withUserId, 200);
-      await markThreadRead(auth.sub, withUserId);
-
+      // FR10 - fetch the conversation and mark incoming messages as read
+      const { peer, messages } = await messageService.getConversationWithPeer(auth.sub, withUserId);
       return NextResponse.json({
         peer: { id: peer.id, fullName: peer.fullName, email: peer.email },
         messages: messages.map((m) => ({
@@ -45,48 +34,28 @@ export async function GET(request: Request) {
       });
     }
 
-    const threads = await listThreadsForUser(auth.sub);
+    // FR10 - return all threads for this user
+    const threads = await messageService.getThreads(auth.sub);
     return NextResponse.json({ threads });
-  } catch (err) {
+  } catch (err: any) {
+    if (err?.status) return NextResponse.json({ error: err.message }, { status: err.status });
     console.error("GET /api/messages", err);
     return NextResponse.json({ error: "Failed to load messages" }, { status: 500 });
   }
 }
 
-/** POST /api/messages  body: { receiverId, content } */
+// FR11 + NFR1 + NFR4 - send a message to another user
+// body: { receiverId, content }
 export async function POST(request: Request) {
+  // NFR1 - must be logged in to send messages
   const auth = requireAuth(request);
-  if (auth instanceof Response) return auth;
+  if (isAuthError(auth)) return auth;
 
   try {
     const body = await request.json().catch(() => ({}));
-    const receiverId = typeof body.receiverId === "string" ? body.receiverId.trim() : "";
-    const content =
-      typeof body.content === "string" ? body.content.trim() : "";
 
-    if (!receiverId) {
-      return NextResponse.json({ error: "receiverId is required" }, { status: 400 });
-    }
-    if (receiverId === auth.sub) {
-      return NextResponse.json({ error: "Cannot message yourself" }, { status: 400 });
-    }
-    if (!content || content.length > 8000) {
-      return NextResponse.json(
-        { error: "content must be 1–8000 characters" },
-        { status: 400 }
-      );
-    }
-
-    const receiver = await prisma.user.findUnique({ where: { id: receiverId } });
-    if (!receiver) {
-      return NextResponse.json({ error: "Receiver not found" }, { status: 404 });
-    }
-
-    const message = await sendMessage({
-      senderId: auth.sub,
-      receiverId,
-      content,
-    });
+    // NFR4 - messageService validates receiverId and content before sending
+    const message = await messageService.postMessage(auth.sub, body);
 
     return NextResponse.json({
       message: {
@@ -98,16 +67,9 @@ export async function POST(request: Request) {
         receiverId: message.receiverId,
       },
     });
-  } catch (err: unknown) {
+  } catch (err: any) {
+    if (err?.status) return NextResponse.json({ error: err.message }, { status: err.status });
     console.error("POST /api/messages", err);
-    const detail =
-      err instanceof Error ? err.message : typeof err === "string" ? err : "Unknown error";
-    return NextResponse.json(
-      {
-        error: "Failed to send message",
-        ...(process.env.NODE_ENV === "development" ? { detail } : {}),
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to send message" }, { status: 500 });
   }
 }
