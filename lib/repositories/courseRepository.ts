@@ -35,7 +35,7 @@ export async function findPublishedCourses(subject?: string) {
   });
 }
 
-// FR5 - look up a single course (used before update/delete to check ownership)
+// FR5 - look up a single course (used before update/archive to check ownership)
 export async function findCourseById(id: number) {
   return prisma.course.findUnique({ where: { id } });
 }

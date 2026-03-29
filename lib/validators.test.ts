@@ -3,14 +3,10 @@
 // These test each validator in complete isolation — no DB, no HTTP
 
 import { describe, expect, it } from "vitest";
-import {
-  validateCourseInput,
-  validateStudyPlanInput,
-  validateTaskToggle,
-  validateMessageInput,
-  validateSubmissionInput,
-  validateReviewInput,
-} from "./validators";
+import { validateCourseInput } from "./validators/courseValidator";
+import { validateStudyPlanInput, validateTaskToggle } from "./validators/planningValidator";
+import { validateMessageInput } from "./validators/messagingValidator";
+import { validateSubmissionInput, validateReviewInput } from "./validators/assessmentValidator";
 
 // ── validateCourseInput ───────────────────────────────────────────────────────
 describe("validateCourseInput", () => {

@@ -3,7 +3,7 @@
 // NFR15 - keeps the ownership check out of the route handler
 
 import * as taskRepo from "@/lib/repositories/taskRepository";
-import { validateTaskToggle } from "@/lib/validators";
+import { validateTaskToggle } from "@/lib/validators/planningValidator";
 
 // FR14 + NFR1 + NFR2 + NFR4 - toggle a task's completed status
 // we load the task first so we can verify the student actually owns its parent plan
