@@ -39,8 +39,8 @@ export default function StudentAssignmentsPage() {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-semibold">My Assignments</h1>
-          <Link href="/dashboard/student" className="text-sm text-emerald-600 hover:underline">
-            ← Back to dashboard
+          <Link href="/dashboard/student" className="inline-flex items-center rounded-xl border border-slate-300 px-3.5 py-2 text-xs font-medium text-slate-600 transition hover:bg-slate-50">
+            &larr; Back to dashboard
           </Link>
         </div>
 

@@ -83,6 +83,7 @@ function navForRole(role: string): { title: string; items: NavItem[]; badge: str
       { href: "/dashboard/student", label: "Overview", icon: <IconOverview /> },
       { href: "/dashboard/student/messages", label: "Messages", icon: <IconChat /> },
       { href: "/courses", label: "Browse courses", icon: <IconBook /> },
+      { href: "/dashboard/student/courses", label: "My courses", icon: <IconBook /> },
       { href: "/dashboard/student/assignments", label: "My assignments", icon: <IconClipboard /> },
     ],
   };

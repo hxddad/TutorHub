@@ -111,6 +111,12 @@ export default function StudentDashboardPage() {
       cta: "Open catalog",
     },
     {
+      title: "My courses",
+      description: "See the courses you are enrolled in, check assignments, and view course details.",
+      href: "/dashboard/student/courses",
+      cta: "View my courses",
+    },
+    {
       title: "My assignments",
       description: "View due dates, submit work, and track feedback from your tutors.",
       href: "/dashboard/student/assignments",

@@ -68,9 +68,9 @@ export default async function TutorStudyPlansPage() {
         <div className="mt-8">
           <Link
             href="/dashboard/tutor"
-            className="text-sm text-emerald-600 hover:underline"
+            className="inline-flex items-center rounded-xl border border-slate-300 px-3.5 py-2 text-xs font-medium text-slate-600 transition hover:bg-slate-50"
           >
-            ← Back to dashboard
+            &larr; Back to dashboard
           </Link>
         </div>
       </div>

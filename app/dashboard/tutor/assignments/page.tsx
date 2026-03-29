@@ -51,9 +51,9 @@ export default function TutorAssignmentsPage() {
 
         <Link
           href="/dashboard/tutor"
-          className="text-sm text-emerald-600 hover:underline mb-6 inline-block"
+          className="inline-flex items-center rounded-xl border border-slate-300 px-3.5 py-2 text-xs font-medium text-slate-600 transition hover:bg-slate-50 mb-6"
         >
-          ← Back to dashboard
+          &larr; Back to dashboard
         </Link>
 
         {/* Course filter */}

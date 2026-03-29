@@ -19,9 +19,9 @@ export default async function CreateStudyPlanPage() {
           <h1 className="text-2xl font-semibold">Create Study Plan</h1>
           <Link
             href="/dashboard/student"
-            className="text-sm text-emerald-600 hover:underline"
+            className="inline-flex items-center rounded-xl border border-slate-300 px-3.5 py-2 text-xs font-medium text-slate-600 transition hover:bg-slate-50"
           >
-            ← Back to dashboard
+            &larr; Back to dashboard
           </Link>
         </div>
 
