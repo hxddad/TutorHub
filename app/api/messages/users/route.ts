@@ -1,11 +1,10 @@
 // app/api/messages/users/route.ts
-// User search for the "start a conversation" UI
-// FR10 (message user search), NFR1 (auth), NFR2 (excludes self)
-// Route handles request/response only — DB access via messageRepository
+// FR10 (user search for messaging), NFR1 (auth), NFR2 (excludes self)
+// NFR15 (thin route — business logic delegated to messageService)
 
 import { NextResponse } from "next/server";
 import { requireAuth, isAuthError } from "@/lib/api-auth";
-import { searchUsers } from "@/lib/repositories/messageRepository";
+import * as messageService from "@/lib/services/messageService";
 
 // FR10 + NFR1 + NFR2 - search for users to message; self is always excluded
 export async function GET(request: Request) {
@@ -17,8 +16,7 @@ export async function GET(request: Request) {
   const q = (searchParams.get("q") || "").trim();
 
   try {
-    // NFR2 - auth.sub is excluded from results so user can't message themselves
-    const users = await searchUsers(auth.sub, q);
+    const users = await messageService.listAvailableMessageUsers(auth.sub, q);
     return NextResponse.json({ users });
   } catch (err) {
     console.error("GET /api/messages/users", err);

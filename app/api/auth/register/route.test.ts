@@ -1,120 +1,69 @@
+// app/api/auth/register/route.test.ts
+// Integration tests for POST /api/auth/register
+// Layer: Route handler — authService is mocked; we only test HTTP concerns here
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 
-const prismaMock = vi.hoisted(() => ({
-  user: {
-    findUnique: vi.fn(),
-    create: vi.fn(),
-  },
+// Mock the service layer — route tests verify HTTP wiring, not business logic
+vi.mock("@/lib/services/authService", () => ({
+  registerUser: vi.fn(),
 }));
 
-vi.mock("@/lib/prisma", () => ({ prisma: prismaMock }));
-
-vi.mock("bcrypt", () => ({
-  default: { hash: vi.fn(() => Promise.resolve("hashed-password")) },
-}));
-
+import * as authService from "@/lib/services/authService";
 import { POST } from "./route";
 
+function makeReq(body: object) {
+  return new NextRequest("http://localhost/api/auth/register", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
 describe("POST /api/auth/register", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+  beforeEach(() => vi.clearAllMocks());
 
-  it("returns 400 when name too short", async () => {
-    const req = new NextRequest("http://localhost/api/auth/register", {
-      method: "POST",
-      body: JSON.stringify({
-        fullName: "A",
-        email: "a@b.com",
-        password: "password12",
-        role: "STUDENT",
-      }),
+  // FR1: service throws 400 → route returns 400 with the error message
+  it("returns 400 when authService rejects validation (FR1)", async () => {
+    vi.mocked(authService.registerUser).mockRejectedValue({
+      status: 400,
+      message: "Name must be at least 2 characters.",
     });
-    const res = await POST(req);
+    const res = await POST(makeReq({ fullName: "A", email: "a@b.com", password: "pass1234", role: "STUDENT" }));
     expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toMatch(/2 characters/);
   });
 
-  it("returns 400 for invalid email", async () => {
-    const req = new NextRequest("http://localhost/api/auth/register", {
-      method: "POST",
-      body: JSON.stringify({
-        fullName: "Ab",
-        email: "not-an-email",
-        password: "password12",
-        role: "STUDENT",
-      }),
+  // FR1: duplicate email → service throws 409 → route returns 409
+  it("returns 409 when email already exists (FR1)", async () => {
+    vi.mocked(authService.registerUser).mockRejectedValue({
+      status: 409,
+      message: "An account with this email already exists.",
     });
-    const res = await POST(req);
-    expect(res.status).toBe(400);
-  });
-
-  it("returns 400 when password under 8 chars", async () => {
-    const req = new NextRequest("http://localhost/api/auth/register", {
-      method: "POST",
-      body: JSON.stringify({
-        fullName: "Ab cd",
-        email: "a@b.com",
-        password: "short",
-        role: "STUDENT",
-      }),
-    });
-    const res = await POST(req);
-    expect(res.status).toBe(400);
-  });
-
-  it("returns 400 when role invalid", async () => {
-    const req = new NextRequest("http://localhost/api/auth/register", {
-      method: "POST",
-      body: JSON.stringify({
-        fullName: "Ab cd",
-        email: "a@b.com",
-        password: "password12",
-        role: "INVALID",
-      }),
-    });
-    const res = await POST(req);
-    expect(res.status).toBe(400);
-  });
-
-  it("returns 409 when email exists", async () => {
-    prismaMock.user.findUnique.mockResolvedValue({ id: "x" } as never);
-    const req = new NextRequest("http://localhost/api/auth/register", {
-      method: "POST",
-      body: JSON.stringify({
-        fullName: "Ab cd",
-        email: "taken@b.com",
-        password: "password12",
-        role: "STUDENT",
-      }),
-    });
-    const res = await POST(req);
+    const res = await POST(makeReq({ fullName: "Test User", email: "taken@b.com", password: "pass1234", role: "STUDENT" }));
     expect(res.status).toBe(409);
   });
 
-  it("returns 201 with user when registration succeeds", async () => {
-    prismaMock.user.findUnique.mockResolvedValue(null);
-    prismaMock.user.create.mockResolvedValue({
+  // FR1 happy path: service resolves → route returns 200 with success + user
+  it("returns 200 with user when registration succeeds (FR1)", async () => {
+    vi.mocked(authService.registerUser).mockResolvedValue({
       id: "new-id",
       fullName: "Test User",
       email: "new@b.com",
       role: "STUDENT",
       createdAt: new Date(),
-    } as never);
-
-    const req = new NextRequest("http://localhost/api/auth/register", {
-      method: "POST",
-      body: JSON.stringify({
-        fullName: "Test User",
-        email: "new@b.com",
-        password: "password12",
-        role: "STUDENT",
-      }),
-    });
-    const res = await POST(req);
+    } as any);
+    const res = await POST(makeReq({ fullName: "Test User", email: "new@b.com", password: "pass1234", role: "STUDENT" }));
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.success).toBe(true);
     expect(body.user.email).toBe("new@b.com");
+  });
+
+  // NFR15: route never calls Prisma/bcrypt directly — all errors from service are relayed
+  it("returns 500 when authService throws an unexpected error", async () => {
+    vi.mocked(authService.registerUser).mockRejectedValue(new Error("DB exploded"));
+    const res = await POST(makeReq({ fullName: "Test User", email: "new@b.com", password: "pass1234", role: "STUDENT" }));
+    expect(res.status).toBe(500);
   });
 });

@@ -24,6 +24,11 @@ export async function getConversationWithPeer(userId: string, peerId: string) {
   return { peer, messages };
 }
 
+// FR10 + NFR2 - search for users available to message; caller is excluded from results
+export async function listAvailableMessageUsers(requesterId: string, query: string) {
+  return messageRepo.searchUsers(requesterId, query);
+}
+
 // FR11 + NFR4 - validate then send a message
 export async function postMessage(senderId: string, body: any) {
   // NFR4 - check receiverId and content are valid

@@ -1,80 +1,61 @@
+// app/api/auth/login/route.test.ts
+// Integration tests for POST /api/auth/login
+// Layer: Route handler — authService is mocked; we only test HTTP concerns here
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 
-const prismaMock = vi.hoisted(() => ({
-  user: { findUnique: vi.fn() },
+// Mock the service layer — route tests verify HTTP wiring, not business logic
+vi.mock("@/lib/services/authService", () => ({
+  loginUser: vi.fn(),
 }));
 
-vi.mock("@/lib/prisma", () => ({ prisma: prismaMock }));
-
-vi.mock("bcrypt", () => ({
-  default: { compare: vi.fn() },
-}));
-
-import bcrypt from "bcrypt";
+import * as authService from "@/lib/services/authService";
 import { POST } from "./route";
 
-describe("POST /api/auth/login", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
+function makeReq(body: object) {
+  return new NextRequest("http://localhost/api/auth/login", {
+    method: "POST",
+    body: JSON.stringify(body),
   });
+}
 
-  it("returns 400 when email missing", async () => {
-    const req = new NextRequest("http://localhost/api/auth/login", {
-      method: "POST",
-      body: JSON.stringify({ password: "x" }),
-    });
-    const res = await POST(req);
+describe("POST /api/auth/login", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  // NFR4: missing email → service throws 400 → route returns 400
+  it("returns 400 when email is missing (NFR4)", async () => {
+    vi.mocked(authService.loginUser).mockRejectedValue({ status: 400, message: "Email is required." });
+    const res = await POST(makeReq({ password: "pass1234" }));
     expect(res.status).toBe(400);
   });
 
-  it("returns 401 when user not found", async () => {
-    prismaMock.user.findUnique.mockResolvedValue(null);
-    const req = new NextRequest("http://localhost/api/auth/login", {
-      method: "POST",
-      body: JSON.stringify({ email: "no@one.com", password: "password12" }),
-    });
-    const res = await POST(req);
+  // FR2: wrong credentials → service throws 401 → route returns 401
+  it("returns 401 when credentials are invalid (FR2)", async () => {
+    vi.mocked(authService.loginUser).mockRejectedValue({ status: 401, message: "Invalid email or password." });
+    const res = await POST(makeReq({ email: "a@b.com", password: "wrong" }));
     expect(res.status).toBe(401);
+    const body = await res.json();
+    expect(body.error).toMatch(/invalid/i);
   });
 
-  it("returns 401 when password wrong", async () => {
-    prismaMock.user.findUnique.mockResolvedValue({
-      id: "u1",
-      email: "a@b.com",
-      password: "hash",
-      role: "STUDENT",
-      fullName: "A",
-    } as never);
-    vi.mocked(bcrypt.compare).mockResolvedValue(false as never);
-
-    const req = new NextRequest("http://localhost/api/auth/login", {
-      method: "POST",
-      body: JSON.stringify({ email: "a@b.com", password: "wrongpass" }),
-    });
-    const res = await POST(req);
-    expect(res.status).toBe(401);
-  });
-
-  it("returns 200 with token when credentials valid", async () => {
-    prismaMock.user.findUnique.mockResolvedValue({
-      id: "u1",
-      email: "a@b.com",
-      password: "hash",
-      role: "STUDENT",
-      fullName: "A",
-    } as never);
-    vi.mocked(bcrypt.compare).mockResolvedValue(true as never);
-
-    const req = new NextRequest("http://localhost/api/auth/login", {
-      method: "POST",
-      body: JSON.stringify({ email: "a@b.com", password: "password12" }),
-    });
-    const res = await POST(req);
+  // FR2 + NFR1 happy path: valid credentials → service resolves → route returns 200 with token
+  it("returns 200 with token when credentials are valid (FR2 + NFR1)", async () => {
+    vi.mocked(authService.loginUser).mockResolvedValue({
+      token: "jwt.token.here",
+      user: { id: "u1", fullName: "A", email: "a@b.com", role: "STUDENT" },
+    } as any);
+    const res = await POST(makeReq({ email: "a@b.com", password: "pass1234" }));
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.success).toBe(true);
     expect(body.token).toBeTruthy();
     expect(body.user.email).toBe("a@b.com");
+  });
+
+  // NFR15: unexpected errors from service → 500
+  it("returns 500 on unexpected error", async () => {
+    vi.mocked(authService.loginUser).mockRejectedValue(new Error("DB down"));
+    const res = await POST(makeReq({ email: "a@b.com", password: "pass1234" }));
+    expect(res.status).toBe(500);
   });
 });

@@ -16,7 +16,7 @@ vi.mock("@/lib/messages", () => ({
 }));
 
 import * as messages from "@/lib/messages";
-import { getThreads, getConversationWithPeer, postMessage } from "./messageService";
+import { getThreads, getConversationWithPeer, postMessage, listAvailableMessageUsers } from "./messageService";
 
 describe("messageService", () => {
   beforeEach(() => vi.clearAllMocks());
@@ -51,6 +51,28 @@ describe("messageService", () => {
       const result = await getConversationWithPeer("user-1", "user-2");
       expect(result.peer.id).toBe("user-2");
       expect(messages.markThreadRead).toHaveBeenCalledWith("user-1", "user-2");
+    });
+  });
+
+  // ── listAvailableMessageUsers ─────────────────────────────────────────────
+  describe("listAvailableMessageUsers (FR10 + NFR2)", () => {
+    // FR10: delegates search to repository with caller excluded
+    it("delegates to searchUsers with requesterId and query (FR10 + NFR2)", async () => {
+      prismaMock.user.findUnique.mockResolvedValue(null); // not called but reset for clarity
+      // searchUsers lives in messageRepository which uses prisma.user.findMany
+      // We verify the service passes through args correctly by checking the call shape
+      // Full DB behaviour is tested at the repository layer
+      const findManySpy = vi.fn().mockResolvedValue([
+        { id: "u2", fullName: "Bob", email: "b@test.com", role: "TUTOR" },
+      ]);
+      // Patch prisma mock with findMany for this test
+      (prismaMock as any).user.findMany = findManySpy;
+
+      const result = await listAvailableMessageUsers("caller-id", "Bob");
+      expect(findManySpy).toHaveBeenCalledWith(
+        expect.objectContaining({ where: expect.objectContaining({ id: { not: "caller-id" } }) })
+      );
+      expect(result).toHaveLength(1);
     });
   });
 
