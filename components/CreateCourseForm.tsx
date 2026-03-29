@@ -88,7 +88,7 @@ export default function CreateCourseForm({ tutorId }: { tutorId?: string }) {
           <select
             value={level}
             onChange={(e) => setLevel(e.target.value)}
-            className="w-full border rounded px-3 py-2 bg-white"
+            className="w-full appearance-none rounded-xl border border-slate-300 bg-white px-4 py-2.5 pr-10 text-sm text-slate-900 shadow-sm transition focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100 cursor-pointer"
           >
             <option value="">Select level</option>
             <option value="Beginner">Beginner</option>

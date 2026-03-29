@@ -148,7 +148,7 @@ export default function StudyPlanForm({ planId, initialTasks, role = "STUDENT" }
           <select
             value={t.courseId}
             onChange={(e) => handleTaskChange(i, "courseId", e.target.value)}
-            className="border rounded px-2 py-1 flex-1"
+            className="flex-1 appearance-none rounded-xl border border-slate-300 bg-white px-4 py-2.5 pr-10 text-sm text-slate-900 shadow-sm transition focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100 cursor-pointer"
           >
             <option value="">Select course</option>
             {courses.map((c) => (

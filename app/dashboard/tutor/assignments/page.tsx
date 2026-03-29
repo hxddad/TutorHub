@@ -76,7 +76,7 @@ export default function TutorAssignmentsPage() {
                 id="courseSelect"
                 value={selectedCourse ?? ""}
                 onChange={(e) => setSelectedCourse(Number(e.target.value))}
-                className="w-full border rounded-md px-3 py-2 shadow-sm"
+                className="w-full appearance-none rounded-xl border border-slate-300 bg-white px-4 py-2.5 pr-10 text-sm text-slate-900 shadow-sm transition focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100 cursor-pointer"
               >
                 {courses.map((c: any) => (
                   <option key={c.id} value={c.id}>

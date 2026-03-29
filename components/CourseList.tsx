@@ -54,7 +54,7 @@ export default function CourseList() {
             id="subject"
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
-            className="border rounded-md px-3 py-1 shadow-sm"
+            className="appearance-none rounded-xl border border-slate-300 bg-white px-4 py-2.5 pr-10 text-sm text-slate-900 shadow-sm transition focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-100 cursor-pointer"
           >
             <option value="">All subjects</option>
             {subjects.map((s) => (
