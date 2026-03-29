@@ -1,24 +1,16 @@
-// lib/repositories/messageRepository.test.ts
-// Tests for the message repository (user lookups and message operations)
-// NFR13 - all Prisma and lib/messages calls are mocked
+// lib/repositories/messageRepository.ts
+// Tests for the message repository — all Prisma calls are mocked
+// lib/messages.ts has been removed; the repository owns all messaging DB logic directly
+// NFR13 (testability), NFR15 (maintainability)
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-// Mock the prisma client used directly by the repo (for user lookup and user search)
 const prismaMock = vi.hoisted(() => ({
-  user: { findUnique: vi.fn(), findMany: vi.fn() },
+  user:    { findUnique: vi.fn(), findMany: vi.fn() },
+  message: { findMany: vi.fn(), create: vi.fn(), updateMany: vi.fn() },
 }));
 vi.mock("@/lib/prisma", () => ({ prisma: prismaMock }));
 
-// Mock the lib/messages helpers that the repo delegates to
-vi.mock("@/lib/messages", () => ({
-  getConversation: vi.fn(),
-  listThreadsForUser: vi.fn(),
-  markThreadRead: vi.fn(),
-  sendMessage: vi.fn(),
-}));
-
-import * as messages from "@/lib/messages";
 import {
   findUserById,
   getThreads,
@@ -31,13 +23,11 @@ import {
 describe("messageRepository", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  // FR10 - finding a user before opening or sending in a conversation
+  // FR10 - finding a user before opening or validating a conversation
   describe("findUserById", () => {
-    it("returns the user with id, fullName, and email", async () => {
+    it("returns the user with safe fields selected", async () => {
       prismaMock.user.findUnique.mockResolvedValue({ id: "u1", fullName: "Alice", email: "a@t.com" });
-
       const result = await findUserById("u1");
-
       expect(prismaMock.user.findUnique).toHaveBeenCalledWith({
         where: { id: "u1" },
         select: { id: true, fullName: true, email: true },
@@ -45,99 +35,109 @@ describe("messageRepository", () => {
       expect(result?.fullName).toBe("Alice");
     });
 
-    it("returns null when the user does not exist", async () => {
+    it("returns null when user does not exist", async () => {
       prismaMock.user.findUnique.mockResolvedValue(null);
       expect(await findUserById("ghost")).toBeNull();
     });
   });
 
-  // FR10 - getting the thread list for the messages inbox
+  // FR10 - thread list for the messaging inbox
   describe("getThreads", () => {
-    it("delegates to listThreadsForUser with the correct userId", async () => {
-      vi.mocked(messages.listThreadsForUser).mockResolvedValue([]);
+    it("returns an empty array when user has no messages", async () => {
+      prismaMock.message.findMany.mockResolvedValue([]);
+      const result = await getThreads("user-1");
+      expect(result).toEqual([]);
+      expect(prismaMock.message.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: expect.objectContaining({ OR: expect.any(Array) }) })
+      );
+    });
 
-      await getThreads("user-1");
-
-      expect(messages.listThreadsForUser).toHaveBeenCalledWith("user-1");
+    it("groups messages into one thread per peer and marks unread count", async () => {
+      const now = new Date();
+      prismaMock.message.findMany.mockResolvedValue([
+        {
+          id: "m1", senderId: "peer-1", receiverId: "user-1", content: "Hi",
+          isRead: false, createdAt: now,
+          sender:   { id: "peer-1", fullName: "Bob",   email: "b@t.com" },
+          receiver: { id: "user-1", fullName: "Alice", email: "a@t.com" },
+        },
+      ]);
+      const result = await getThreads("user-1");
+      expect(result).toHaveLength(1);
+      expect(result[0].peer.id).toBe("peer-1");
+      expect(result[0].unread).toBe(1);
     });
   });
 
-  // FR10 - opening a conversation between two users
+  // FR10 - fetching the full conversation between two users
   describe("getConversationBetween", () => {
-    it("delegates to getConversation with both user IDs", async () => {
-      vi.mocked(messages.getConversation).mockResolvedValue([]);
-
+    it("queries messages in both directions between the two users", async () => {
+      prismaMock.message.findMany.mockResolvedValue([]);
       await getConversationBetween("user-a", "user-b");
-
-      expect(messages.getConversation).toHaveBeenCalledWith("user-a", "user-b", 200);
+      expect(prismaMock.message.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ OR: expect.any(Array) }),
+        })
+      );
     });
   });
 
   // FR10 - marking messages as read when the user opens a thread
   describe("markRead", () => {
-    it("calls markThreadRead with reader and sender IDs", async () => {
-      vi.mocked(messages.markThreadRead).mockResolvedValue({ count: 3 } as any);
-
-      await markRead("reader-id", "sender-id");
-
-      expect(messages.markThreadRead).toHaveBeenCalledWith("reader-id", "sender-id");
+    it("marks unread messages from peer to reader as read", async () => {
+      prismaMock.message.updateMany.mockResolvedValue({ count: 2 });
+      await markRead("reader-id", "peer-id");
+      expect(prismaMock.message.updateMany).toHaveBeenCalledWith({
+        where: { receiverId: "reader-id", senderId: "peer-id", isRead: false },
+        data:  { isRead: true },
+      });
     });
   });
 
-  // FR11 - sending a new message
+  // FR11 - creating a new message
   describe("createMessage", () => {
-    it("calls sendMessage with the correct sender, receiver, and content", async () => {
-      vi.mocked(messages.sendMessage).mockResolvedValue({ id: "msg-1" } as any);
-
-      await createMessage("sender-id", "receiver-id", "Hello!");
-
-      expect(messages.sendMessage).toHaveBeenCalledWith({
-        senderId: "sender-id",
-        receiverId: "receiver-id",
-        content: "Hello!",
-      });
+    it("creates the message with sender and receiver included", async () => {
+      prismaMock.message.create.mockResolvedValue({ id: "msg-1", content: "Hello!" } as any);
+      const result = await createMessage("sender-id", "receiver-id", "Hello!");
+      expect(prismaMock.message.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: { senderId: "sender-id", receiverId: "receiver-id", content: "Hello!" },
+        })
+      );
+      expect(result).toMatchObject({ id: "msg-1" });
     });
   });
 
   // FR10 - searching for users to start a conversation with
   describe("searchUsers", () => {
-    it("excludes the requesting user from results (NFR2 — can't message yourself)", async () => {
+    it("excludes the requesting user from results (NFR2)", async () => {
       prismaMock.user.findMany.mockResolvedValue([]);
-
       await searchUsers("my-id", "alice");
-
-      // the where clause must exclude the calling user
       expect(prismaMock.user.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({ id: { not: "my-id" } }),
-        })
+        expect.objectContaining({ where: expect.objectContaining({ id: { not: "my-id" } }) })
       );
     });
 
-    it("searches by name and email when a query string is provided", async () => {
+    it("searches by name and email when a query is provided", async () => {
       prismaMock.user.findMany.mockResolvedValue([]);
-
       await searchUsers("my-id", "alice");
-
       expect(prismaMock.user.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
             OR: expect.arrayContaining([
               expect.objectContaining({ fullName: expect.any(Object) }),
-              expect.objectContaining({ email: expect.any(Object) }),
+              expect.objectContaining({ email:    expect.any(Object) }),
             ]),
           }),
         })
       );
     });
 
-    it("returns all users (excluding self) when no search query is given", async () => {
+    it("returns all users (excluding self) when no query is given", async () => {
       prismaMock.user.findMany.mockResolvedValue([
         { id: "u2", fullName: "Bob", email: "b@t.com", role: "TUTOR" },
       ]);
-
       const result = await searchUsers("my-id", "");
-
       expect(result).toHaveLength(1);
     });
   });

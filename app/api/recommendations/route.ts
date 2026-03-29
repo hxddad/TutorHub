@@ -1,12 +1,12 @@
 // app/api/recommendations/route.ts
-// FR11 (tutor recommendations), NFR1 (auth), NFR15 (thin route)
+// FR15 (tutor recommendations), NFR1 (auth), NFR15 (thin route)
 // All external service interaction is delegated to recommendationGateway
 
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth, isAuthError } from "@/lib/api-auth";
 import * as recommendationGateway from "@/lib/gateways/recommendationGateway";
 
-// FR11 + NFR1 - authenticated user gets recommendations from the Python service
+// FR15 + NFR1 - authenticated user gets recommendations from the Python service
 // student ID comes from the JWT, never from the query string (NFR2)
 export async function GET(req: NextRequest) {
   // NFR1 - must be logged in
