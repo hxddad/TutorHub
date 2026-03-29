@@ -71,7 +71,7 @@ export default function AssignmentList({
                   <div className="flex flex-col items-end gap-2">
                     {role === "STUDENT" && (
                       <a
-                        className="inline-block bg-emerald-600 text-white px-3 py-1 rounded-md text-sm"
+                        className="inline-flex items-center rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-semibold text-white shadow-md shadow-emerald-600/20 transition hover:bg-emerald-500"
                         href={`/dashboard/student/assignments/${a.id}`}
                       >
                         View / Submit
@@ -79,7 +79,7 @@ export default function AssignmentList({
                     )}
                     {role === "TUTOR" && (
                       <a
-                        className="inline-block bg-emerald-600 text-white px-3 py-1 rounded-md text-sm"
+                        className="inline-flex items-center rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-semibold text-white shadow-md shadow-emerald-600/20 transition hover:bg-emerald-500"
                         href={`/dashboard/tutor/submissions?assignmentId=${a.id}`}
                       >
                         Review ({a._count?.submissions || 0})

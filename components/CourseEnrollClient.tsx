@@ -77,7 +77,7 @@ export default function CourseEnrollClient({
       <button
         onClick={handleEnroll}
         disabled={loading || joined || !isPublished || (capacity !== null && enrolledCount >= capacity)}
-        className={`rounded px-3 py-1 text-sm text-white ${joined || loading ? "bg-gray-400" : "bg-emerald-600 hover:bg-emerald-500"}`}
+        className={`rounded-xl px-4 py-2.5 text-sm font-semibold text-white shadow-md transition ${joined || loading ? "bg-gray-400 shadow-gray-400/20 cursor-not-allowed" : "bg-emerald-600 shadow-emerald-600/20 hover:bg-emerald-500"}`}
       >
         {joined ? "Enrolled" : loading ? "Enrolling…" : "Enroll"}
       </button>

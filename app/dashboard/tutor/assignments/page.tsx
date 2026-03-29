@@ -36,13 +36,13 @@ export default function TutorAssignmentsPage() {
           <div className="flex flex-wrap gap-2">
             <Link
               href="/dashboard/tutor/assignments/create-assignments"
-              className="px-4 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700"
+              className="inline-flex items-center rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-emerald-600/20 transition hover:bg-emerald-500"
             >
               Create Assignments
             </Link>
             <Link
               href="/dashboard/tutor/assignments/review-assignments"
-              className="px-4 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700"
+              className="inline-flex items-center rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-emerald-600/20 transition hover:bg-emerald-500"
             >
               Review Assignments
             </Link>

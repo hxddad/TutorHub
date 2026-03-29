@@ -149,7 +149,7 @@ export default function SubmissionForm({ assignmentId }: { assignmentId: number 
         </div>
 
         <div className="flex justify-end">
-          <button type="submit" disabled={submitting} className="rounded bg-emerald-600 text-white px-4 py-2">
+          <button type="submit" disabled={submitting} className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-emerald-600/20 transition hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed">
             {submitting ? "Submitting…" : existingSub ? "Resubmit" : "Submit"}
           </button>
         </div>

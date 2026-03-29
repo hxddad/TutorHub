@@ -158,7 +158,7 @@ export default function SubmissionReviewList({
                   <button
                     onClick={() => handleReview(s.id)}
                     disabled={savingId === s.id}
-                    className={`ml-auto rounded px-3 py-1 text-sm text-white ${savingId === s.id ? "bg-gray-400" : "bg-emerald-600 hover:bg-emerald-500"}`}
+                    className={`ml-auto rounded-xl px-4 py-2 text-sm font-semibold text-white shadow-md transition disabled:cursor-not-allowed ${savingId === s.id ? "bg-gray-400 shadow-gray-400/20" : "bg-emerald-600 shadow-emerald-600/20 hover:bg-emerald-500"}`}
                   >
                     {savingId === s.id ? "Saving…" : reviewed ? "Update review" : "Mark as reviewed"}
                   </button>
