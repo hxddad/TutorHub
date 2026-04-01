@@ -165,10 +165,10 @@ export default function StudyPlanForm({ planId, initialTasks, role = "STUDENT" }
               <option
                 key={c.id}
                 value={String(c.id)}
-                disabled={
+                {/* disabled={
                   selectedCourseIds.includes(String(c.id)) &&
                   String(c.id) !== t.courseId
-                }
+                } */}
               >
                 {c.title}
               </option>
