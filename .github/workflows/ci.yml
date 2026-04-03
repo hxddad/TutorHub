@@ -21,5 +21,8 @@ jobs:
       - name: Install
         run: npm ci --legacy-peer-deps
 
+      - name: Generate Prisma client
+        run: npx prisma generate
+
       - name: Unit tests
         run: npm test
