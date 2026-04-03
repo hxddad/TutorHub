@@ -58,6 +58,7 @@ export default async function TutorStudyPlansPage() {
                   dueDate: t.dueDate.toISOString(),
                   completed: t.completed ?? false,
                 }))}
+                role="TUTOR"
               />
             ))
           )}

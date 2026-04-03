@@ -20,9 +20,10 @@ type StudyPlanCardProps = {
   createdAt: string;
   tasks: Task[];
   showActions?: boolean;
+  role?: "STUDENT" | "TUTOR";
 };
 
-export default function StudyPlanCard({ planId, studentName, createdAt, tasks: initialTasks }: StudyPlanCardProps) {
+export default function StudyPlanCard({ planId, studentName, createdAt, tasks: initialTasks, role = "STUDENT" }: StudyPlanCardProps) {
   const [tasks, setTasks] = useState(initialTasks);
 
   const getProgressPercent = (tasks: Task[]) => {
@@ -94,14 +95,14 @@ export default function StudyPlanCard({ planId, studentName, createdAt, tasks: i
       
       {/* Edit Button */}
       <Link
-        href={`/dashboard/student/study-plan/${planId}/edit`}
-        className="bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-emerald-500 transition"
+        href={role === "TUTOR" ? `/dashboard/tutor/study-plan/${planId}/edit` : `/dashboard/student/study-plan/${planId}/edit`}
+        className="inline-flex items-center rounded-xl bg-emerald-600 px-3.5 py-2 text-xs font-semibold text-white shadow-md shadow-emerald-600/20 transition hover:bg-emerald-500"
       >
         Edit
       </Link>
 
-      {/* Delete Button */}
-      <DeleteStudyPlanButton planId={planId} />
+      {/* Delete Button — only for students (plan owners) */}
+      {role === "STUDENT" && <DeleteStudyPlanButton planId={planId} />}
       
     </div>
   </div>

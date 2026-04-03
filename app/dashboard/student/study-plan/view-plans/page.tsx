@@ -67,6 +67,7 @@ export default async function ViewStudyPlansPage() {
                   })
                 )}
                 showActions={true}
+                role="STUDENT"
                 />
 
       
