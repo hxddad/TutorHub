@@ -3,6 +3,7 @@
 // Provides predictable IDs and tokens for STUDENT, TUTOR, and ADMIN roles
 
 import { signToken } from "@/lib/jwt";
+import type { Role } from "@/lib/roles";
 
 export const STUDENT = {
   id: "fixture-student-aaaa-aaaa-aaaaaaaaaaaa",
@@ -33,6 +34,6 @@ export const OTHER_STUDENT = {
 };
 
 /** Returns a Bearer token string for use in Authorization headers */
-export function tokenFor(user: { id: string; role: string }): string {
+export function tokenFor(user: { id: string; role: Role }): string {
   return `Bearer ${signToken(user.id, user.role)}`;
 }
