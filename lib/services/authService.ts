@@ -2,7 +2,7 @@
 // Business logic for authentication — routes stay thin; all auth rules live here
 // FR1 (register), FR2 (login), NFR1 (JWT), NFR4 (validation), NFR15 (SRP)
 
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import * as authRepo from "@/lib/repositories/authRepository";
 import { signToken } from "@/lib/jwt";
 import { ROLES, type Role } from "@/lib/roles";

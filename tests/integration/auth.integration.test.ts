@@ -11,7 +11,7 @@ const prismaMock = vi.hoisted(() => ({
 vi.mock("@/lib/prisma", () => ({ prisma: prismaMock }));
 
 // Mock bcrypt so tests are fast and deterministic
-vi.mock("bcrypt", () => ({
+vi.mock("bcryptjs", () => ({
   default: {
     hash: vi.fn().mockResolvedValue("hashed-password"),
     compare: vi.fn(),
@@ -20,7 +20,7 @@ vi.mock("bcrypt", () => ({
   compare: vi.fn(),
 }));
 
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import { NextRequest } from "next/server";
 import { POST as register } from "@/app/api/auth/register/route";
 import { POST as login }    from "@/app/api/auth/login/route";

@@ -9,7 +9,7 @@ vi.mock("@/lib/repositories/authRepository", () => ({
   createUser: vi.fn(),
 }));
 
-vi.mock("bcrypt", () => ({
+vi.mock("bcryptjs", () => ({
   default: {
     hash:    vi.fn(() => Promise.resolve("hashed-password")),
     compare: vi.fn(),
@@ -19,7 +19,7 @@ vi.mock("bcrypt", () => ({
 vi.mock("@/lib/jwt", () => ({ signToken: vi.fn(() => "mocked.jwt.token") }));
 
 import * as authRepo from "@/lib/repositories/authRepository";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import { registerUser, loginUser } from "./authService";
 
 const validRegisterInput = {
