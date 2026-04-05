@@ -3,7 +3,7 @@
 // NFR15 (maintainability), NFR13 (testability)
 
 import { prisma } from "@/lib/prisma";
-import { Role } from "@prisma/client";
+import type { Role } from "@/lib/roles";
 
 // FR1/FR2 - look up a user by email (used for duplicate check on register and credential check on login)
 export async function findUserByEmail(email: string) {

@@ -3,12 +3,12 @@
 // FR1 (register), FR2 (login), NFR1 (JWT), NFR4 (validation), NFR15 (SRP)
 
 import bcrypt from "bcrypt";
-import { Role } from "@prisma/client";
 import * as authRepo from "@/lib/repositories/authRepository";
 import { signToken } from "@/lib/jwt";
+import { ROLES, type Role } from "@/lib/roles";
 
 const SALT_ROUNDS = 10;
-const VALID_ROLES: Role[] = ["STUDENT", "TUTOR", "ADMIN"];
+const VALID_ROLES: readonly Role[] = ROLES;
 
 function toRole(value: string): Role | null {
   const u = value?.toUpperCase();

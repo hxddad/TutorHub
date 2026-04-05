@@ -5,7 +5,7 @@
 // and NFR15 (maintainability) by keeping all the auth logic in one place
 
 import { verifyToken, type JwtPayload } from "@/lib/jwt";
-import { Role } from "@prisma/client";
+import { RoleValues, type Role } from "@/lib/roles";
 
 // NFR1 - read the JWT from either the Authorization header or the authToken cookie
 export function getTokenFromRequest(request: Request): string | null {
@@ -57,11 +57,11 @@ export function requireRole(request: Request, role: Role): JwtPayload | Response
 
 // NFR2 - shorthand helpers for the two main roles
 export function requireTutor(request: Request): JwtPayload | Response {
-  return requireRole(request, Role.TUTOR);
+  return requireRole(request, RoleValues.TUTOR);
 }
 
 export function requireStudent(request: Request): JwtPayload | Response {
-  return requireRole(request, Role.STUDENT);
+  return requireRole(request, RoleValues.STUDENT);
 }
 
 // NFR2 - after verifying auth, check that the logged-in user owns the resource

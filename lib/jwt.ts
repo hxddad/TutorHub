@@ -1,5 +1,5 @@
 import jwt from "jsonwebtoken";
-import { Role } from "@prisma/client";
+import type { Role } from "@/lib/roles";
 
 const JWT_SECRET = process.env.JWT_SECRET || "fallback-secret-change-me";
 
