@@ -3,9 +3,11 @@ import { PrismaPg } from "@prisma/adapter-pg";
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
 
-// We use DATABASE_URL from env so we can talk to PostgreSQL.
-const connectionString =
-  process.env.DATABASE_URL || "postgresql://USER:PASSWORD@localhost:5432/tutorhub";
+const connectionString = process.env.DATABASE_URL;
+
+if (!connectionString) {
+  throw new Error("DATABASE_URL is not set");
+}
 
 const adapter = new PrismaPg({ connectionString });
 export const prisma =
