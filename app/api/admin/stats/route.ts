@@ -5,6 +5,8 @@ import { NextResponse } from "next/server";
 import { requireAuth, isAuthError } from "@/lib/api-auth";
 import * as adminService from "@/lib/services/adminService";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(request: Request) {
   try {
     const auth = requireAuth(request);
