@@ -3,12 +3,28 @@
 import "dotenv/config";
 import { defineConfig } from "prisma/config";
 
+function getDatabaseUrl(): string {
+  const databaseUrl =
+    process.env["PRISMA_DATABASE_URL"] ??
+    process.env["DATABASE_URL"] ??
+    process.env["POSTGRES_PRISMA_URL"] ??
+    process.env["POSTGRES_URL"];
+
+  if (!databaseUrl) {
+    throw new Error(
+      "Set PRISMA_DATABASE_URL, DATABASE_URL, POSTGRES_PRISMA_URL, or POSTGRES_URL before running Prisma CLI"
+    );
+  }
+
+  return databaseUrl;
+}
+
 export default defineConfig({
   schema: "prisma/schema.prisma",
   migrations: {
     path: "prisma/migrations",
   },
   datasource: {
-    url: process.env["PRISMA_DATABASE_URL"],
+    url: getDatabaseUrl(),
   },
 });
